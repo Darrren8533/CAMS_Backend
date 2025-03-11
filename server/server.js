@@ -7,6 +7,7 @@ const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client("671845549558-ceaj5qh7romftff7r5cocnckuqo17cd0.apps.googleusercontent.com");
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 
 const {PGHOST, PGDATABASE, PGUSER, PGPASSWORD} = process.env;
 const port = 5000;
@@ -24,6 +25,24 @@ const pool = new Pool({
 
 const app = express();
 
+app.get('/', async(req, res) => {
+  const client = await pool.connect();
+  
+  try{
+    const result = await client.query("SELECT * FROM users")
+
+    res.json(result.rows);
+  }catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error', success: false });
+    return;
+  }finally{
+    client.release();
+  }
+
+  res.status(404);
+});
+
 
 app.use(express.json());
 app.use(cors());
@@ -39,16 +58,16 @@ const upload = multer({
 });
 
 // Database configuration
-const dbConfig = {
-  user: 'sa',
-  password: 'CAMS',
-  server: 'WILSON1684',
-  database: 'CAMS_DB',
-  options: {
-    encrypt: false,
-    enableArithAbort: true,
-  },
-};
+// const dbConfig = {
+//   user: 'sa',
+//   password: 'CAMS',
+//   server: 'WILSON1684',
+//   database: 'CAMS_DB',
+//   options: {
+//     encrypt: false,
+//     enableArithAbort: true,
+//   },
+// };
 
 // Initialize database connection pool
 // let pool;
@@ -75,23 +94,7 @@ process.on('SIGINT', async () => {
   process.exit();
 });
 
-app.get('/', async(req, res) => {
-  const client = await pool.connect();
-  
-  try{
-    const result = await client.query("SELECT * FROM users")
 
-    res.json(result.rows);
-  }catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error', success: false });
-    return;
-  }finally{
-    client.release();
-  }
-
-  res.status(404);
-});
 
 // Registration
 app.post('/register', async (req, res) => {
