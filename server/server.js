@@ -13,7 +13,7 @@ const {PGHOST, PGDATABASE, PGUSER, PGPASSWORD} = process.env;
 const port = 5000;
 
 const pool = new Pool({
-  host: PGDATABASE,
+  host: PGHOST,
   database: PGDATABASE,
   user: PGUSER,
   password: PGPASSWORD,
