@@ -150,8 +150,8 @@ app.post('/login', async (req, res) => {
       .input('username', sql.VarChar, username)
       .input('password', sql.VarChar, password)
       .query(`
-        SELECT userID, userGroup, uActivation FROM Users
-        WHERE (username = @username OR uEmail = @username)
+        SELECT userid, usergroup, uactivation FROM users
+        WHERE (username = @username OR uemail = @username)
         AND password = @password
       `);
 
@@ -162,9 +162,9 @@ app.post('/login', async (req, res) => {
       await pool.request()
         .input('username', sql.VarChar, username)
         .query(`
-          UPDATE Users
-          SET uStatus = 'login'
-          WHERE username = @username OR uEmail = @username
+          UPDATE users
+          SET ustatus = 'login'
+          WHERE username = @username OR uemail = @username
         `);
 
       // Respond with userID and userGroup
