@@ -10,7 +10,7 @@ const path = require('path');
 const { Pool } = require('pg');
 
 const {PGHOST, PGDATABASE, PGUSER, PGPASSWORD} = process.env;
-const port = 5000;
+const port = 5432;
 
 const pool = new Pool({
   host: PGHOST,
@@ -31,8 +31,9 @@ const app = express();
 app.get('/', async(req, res) => {
   let client;
   try {
-    client = await pool.connect();
-    const result = await client.query("SELECT * FROM users");
+    const test = await pool.query("SELECT * FROM users");
+    // client = await pool.connect();
+    // const result = await client.query("SELECT * FROM users");
     res.json(result.rows);
   } catch (err) {
     console.error(err);
