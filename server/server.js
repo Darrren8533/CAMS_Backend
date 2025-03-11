@@ -31,9 +31,9 @@ const app = express();
 app.get('/', async(req, res) => {
   let client;
   try {
-    const test = await pool.query("SELECT * FROM users");
     // client = await pool.connect();
     // const result = await client.query("SELECT * FROM users");
+    const result = await pool.request().query("SELECT * FROM users");
     res.json(result.rows);
   } catch (err) {
     console.error(err);
