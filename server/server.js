@@ -281,7 +281,8 @@ app.post('/logout', async (req, res) => {
 // Fetch list of customers
 app.get('/users/customers', async (req, res) => {
   try {
-    const result = await pool.request().query(`
+    client = await pool.connect();
+    const result = await client.query(`
       SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
       FROM users
       WHERE usergroup = 'Customer'
