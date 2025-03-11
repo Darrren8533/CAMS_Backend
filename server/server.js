@@ -61,6 +61,10 @@ process.on('SIGINT', async () => {
   process.exit();
 });
 
+app.get('/', (req, res) => {
+  res.json({ message: 'Server is running!' });
+});
+
 // Registration
 app.post('/register', async (req, res) => {
   const { firstName, lastName, username, password, email } = req.body;
