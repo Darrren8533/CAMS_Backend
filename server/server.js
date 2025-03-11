@@ -17,32 +17,32 @@ const pool = new Pool({
   database: PGDATABASE,
   user: PGUSER,
   password: PGPASSWORD,
-  port: port,
+  port: 5432,  // 修正为 PostgreSQL 默认端口
   ssl: {
     require: true,
-  }
+  },
+  // 添加超时设置
+  connectionTimeoutMillis: 5000,
+  query_timeout: 5000
 })
 
 const app = express();
 
 app.get('/', async(req, res) => {
-  const client = await pool.connect();
-  
-  try{
-    const result = await client.query("SELECT * FROM users")
-
+  let client;
+  try {
+    client = await pool.connect();
+    const result = await client.query("SELECT * FROM users");
     res.json(result.rows);
-  }catch (err) {
+  } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error', success: false });
-    return;
-  }finally{
-    client.release();
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
-
-  res.status(404);
 });
-
 
 app.use(express.json());
 app.use(cors());
