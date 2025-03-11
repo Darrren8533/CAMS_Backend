@@ -57,7 +57,7 @@ const upload = multer({
   }
 });
 
-// Database configuration
+//Database configuration
 // const dbConfig = {
 //   user: 'sa',
 //   password: 'CAMS',
