@@ -8,8 +8,22 @@ const client = new OAuth2Client("671845549558-ceaj5qh7romftff7r5cocnckuqo17cd0.a
 const fs = require('fs');
 const path = require('path');
 
-const app = express();
+const {PGHOST, PGDATABASE, PGUSER, PGPASSWORD} = process.env;
 const port = 5000;
+
+const pool = new Pool({
+  host: PGDATABASE,
+  database: PGDATABASE,
+  user: PGUSER,
+  password: PGPASSWORD,
+  port: port,
+  ssl: {
+    require: true,
+  }
+})
+
+const app = express();
+
 
 app.use(express.json());
 app.use(cors());
@@ -37,16 +51,16 @@ const dbConfig = {
 };
 
 // Initialize database connection pool
-let pool;
-const initDbConnection = async () => {
-  try {
-    pool = await sql.connect(dbConfig);
-    console.log('Database connected successfully');
-  } catch (err) {
-    console.error('Error connecting to the database:', err);
-  }
-};
-initDbConnection();
+// let pool;
+// const initDbConnection = async () => {
+//   try {
+//     pool = await sql.connect(dbConfig);
+//     console.log('Database connected successfully');
+//   } catch (err) {
+//     console.error('Error connecting to the database:', err);
+//   }
+// };
+// initDbConnection();
 
 // Close database connection pool on server shutdown
 process.on('SIGINT', async () => {
@@ -61,8 +75,22 @@ process.on('SIGINT', async () => {
   process.exit();
 });
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Server is running!' });
+app.get('/', async(req, res) => {
+  const client = await pool.connect();
+  
+  try{
+    const result = await client.query("SELECT * FROM users")
+
+    res.json(result.rows);
+  }catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error', success: false });
+    return;
+  }finally{
+    client.release();
+  }
+
+  res.status(404);
 });
 
 // Registration
