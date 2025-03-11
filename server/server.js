@@ -281,9 +281,9 @@ app.post('/logout', async (req, res) => {
 app.get('/users/customers', async (req, res) => {
   try {
     const result = await pool.request().query(`
-      SELECT userID, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uActivation, uGender, uTitle
-      FROM Users
-      WHERE userGroup = 'Customer'
+      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      FROM users
+      WHERE usergroup = 'Customer'
     `);
     res.status(200).json(result.recordset);
   } catch (err) {
