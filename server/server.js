@@ -280,6 +280,7 @@ app.post('/logout', async (req, res) => {
 
 // Fetch list of customers
 app.get('/users/customers', async (req, res) => {
+  let client;
   try {
     client = await pool.connect();
     const result = await client.query(`
