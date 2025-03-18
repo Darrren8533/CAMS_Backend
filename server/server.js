@@ -143,37 +143,37 @@ app.post('/register', async (req, res) => {
 //Login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
+  let client;
 
   try {
-    // Verify user credentials and fetch userID, userGroup
-    const result = await pool.request()
-      .input('username', sql.VarChar, username)
-      .input('password', sql.VarChar, password)
-      .query(`
-        SELECT userid, usergroup, uactivation FROM users
-        WHERE (username = @username OR uemail = @username)
-        AND password = @password
-      `);
+    client = await pool.connect();
+    
+    // 使用 PostgreSQL 语法
+    const result = await client.query(
+      `SELECT userid, usergroup, uactivation 
+       FROM users 
+       WHERE (username = $1 OR uemail = $1) 
+       AND password = $2`,
+      [username, password]
+    );
 
-    if (result.recordset.length > 0) {
-      const { userID, userGroup, uActivation } = result.recordset[0];
+    if (result.rows.length > 0) {
+      const { userid, usergroup, uactivation } = result.rows[0];
 
-      // Update user status to logged in
-      await pool.request()
-        .input('username', sql.VarChar, username)
-        .query(`
-          UPDATE users
-          SET ustatus = 'login'
-          WHERE username = @username OR uemail = @username
-        `);
+      // 更新用户状态
+      await client.query(
+        `UPDATE users 
+         SET ustatus = 'login' 
+         WHERE username = $1 OR uemail = $1`,
+        [username]
+      );
 
-      // Respond with userID and userGroup
       res.status(200).json({
         message: 'Login Successful',
         success: true,
-        userID, 
-        userGroup,
-        uActivation 
+        userID: userid, 
+        userGroup: usergroup,
+        uActivation: uactivation 
       });
     } else {
       res.status(401).json({ message: 'Invalid username or password', success: false });
@@ -181,6 +181,10 @@ app.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Error during login:', err);
     res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
