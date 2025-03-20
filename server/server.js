@@ -931,17 +931,23 @@ app.get('/checkStatus', async(req, res) => {
   try {
     client = await pool.connect();
     
+    // 修改查询，获取更多用户信息
     const query = {
-      text: 'SELECT "ustatus" FROM "users" WHERE "userid" = $1',
+      text: 'SELECT userid, username, ustatus, uemail, ufirstname, ulastname FROM "users" WHERE "userid" = $1',
       values: [userID]
     };
     
     const result = await client.query(query);
     
     if (result.rows.length > 0) {
-      const ustatus = result.rows[0].ustatus;
-      res.status(200).json({ ustatus });
+      const user = result.rows[0];
+      console.log('User information:', user); // 在服务器端打印用户信息
+      res.status(200).json({ 
+        ustatus: user.ustatus,
+        userInfo: user  // 可选：同时返回用户信息给客户端
+      });
     } else {
+      console.log('User not found for ID:', userID);
       res.status(404).json({ message: 'User not found' });
     }
   } catch (err) {
