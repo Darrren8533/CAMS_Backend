@@ -957,7 +957,7 @@ app.get('/checkStatus', async(req, res) => {
         userInfo: user  // 可选：同时返回用户信息给客户端
       });
     } else {
-      console.log('User not found for ID:', useridid);
+      console.log('User not found for ID:', userid);
       res.status(404).json({ message: 'User not found' });
     }
   } catch (err) {
