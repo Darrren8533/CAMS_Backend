@@ -106,7 +106,7 @@ app.post('/register', async (req, res) => {
       const checkUserQuery = {
           text: `
               SELECT username, "uemail" FROM "users"
-              WHERE username = $1 OR "uEmail" = $2
+              WHERE username = $1 OR "uemail" = $2
           `,
           values: [username, email]
       };
@@ -123,7 +123,7 @@ app.post('/register', async (req, res) => {
       // 插入新用户
       const insertUserQuery = {
           text: `
-              INSERT INTO "Users" (username, password, "uemail", "utitle", "usergroup", "ustatus", "uactivation", "uimage")
+              INSERT INTO "users" (username, password, "uemail", "utitle", "usergroup", "ustatus", "uactivation", "uimage")
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           `,
           values: [
