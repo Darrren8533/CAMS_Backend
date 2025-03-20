@@ -931,19 +931,7 @@ app.get('/checkStatus', async(req, res) => {
   try {
     client = await pool.connect();
     
-    // 修改查询，获取更多用户信息
-    const query = {
-      text: 'SELECT userid, username, ustatus, uemail, ufirstname, ulastname FROM users',
-      values: [userID]
-    };
-    
-    const result = await client.query(query);
-
-    // 打印完整结果对象
-    console.log('Full result object:', result);
-    
-    // 如果只想查看行数据
-    console.log('Rows:', result.rows);
+    const result = await client.query("SELECT * FROM users");
     
     if (result.rows.length > 0) {
       const user = result.rows[0];
