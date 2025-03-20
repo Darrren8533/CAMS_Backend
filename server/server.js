@@ -695,92 +695,93 @@ app.get('/propertiesListingTable', async (req, res) => {
     return res.status(400).json({ error: 'Username is required' });
   }
 
+  let client;
   try {
-    const userResult = await pool
-      .request()
-      .input('username', sql.VarChar, username)
-      .query(`
-        SELECT userID, userGroup 
-        FROM Users 
-        WHERE username = @username
-      `);
+    client = await pool.connect();
+    
+    // 查询用户信息
+    const userResult = await client.query(
+      'SELECT userid, usergroup FROM users WHERE username = $1',
+      [username]
+    );
 
-    if (userResult.recordset.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const userID = userResult.recordset[0].userID;
-    const userGroup = userResult.recordset[0].userGroup;
+    const userid = userResult.rows[0].userid;
+    const usergroup = userResult.rows[0].usergroup;
 
     let query;
 
-    if (userGroup === 'Moderator') {
+    if (usergroup === 'Moderator') {
       // If user is a Moderator, fetch properties created by that user only
       query = `
         SELECT 
-          p.propertyID, 
-          p.propertyAddress, 
-          p.nearbyLocation,
-          p.propertyBedType, 
-          p.propertyGuestPaxNo, 
-          p.propertyDescription, 
-          p.propertyStatus, 
-          p.propertyImage,
-          u.uFirstName, 
-          u.uLastName,
+          p.propertyid, 
+          p.propertyaddress, 
+          p.nearbylocation,
+          p.propertybedtype, 
+          p.propertyguestpaxno, 
+          p.propertydescription, 
+          p.propertystatus, 
+          p.propertyimage,
+          u.ufirstname, 
+          u.ulastname,
           u.username,
-          r.rateAmount,
-          cl.clusterName,
-          c.categoryName
-        FROM Properties p
-        JOIN Users u ON p.userID = u.userID
-        JOIN Rate r ON p.rateID = r.rateID
-        JOIN Clusters cl ON p.clusterID = cl.clusterID
-        JOIN Categories c ON p.categoryID = c.categoryID
-        WHERE p.userID = @userID
+          r.rateamount,
+          cl.clustername,
+          c.categoryname
+        FROM properties p
+        JOIN users u ON p.userid = u.userid
+        JOIN rate r ON p.rateid = r.rateid
+        JOIN clusters cl ON p.clusterid = cl.clusterid
+        JOIN categories c ON p.categoryid = c.categoryid
+        WHERE p.userid = $1
       `;
-    } else{
-      
+    } else {
+      // 如果是管理员或其他角色，使用相同的查询
       query = `
         SELECT 
-          p.propertyID, 
-          p.propertyAddress, 
-          p.nearbyLocation,
-          p.propertyBedType, 
-          p.propertyGuestPaxNo, 
-          p.propertyDescription, 
-          p.propertyStatus, 
-          p.propertyImage,
-          u.uFirstName, 
-          u.uLastName,
+          p.propertyid, 
+          p.propertyaddress, 
+          p.nearbylocation,
+          p.propertybedtype, 
+          p.propertyguestpaxno, 
+          p.propertydescription, 
+          p.propertystatus, 
+          p.propertyimage,
+          u.ufirstname, 
+          u.ulastname,
           u.username,
-          r.rateAmount,
-          cl.clusterName,
-          c.categoryName
-        FROM Properties p
-        JOIN Users u ON p.userID = u.userID
-        JOIN Rate r ON p.rateID = r.rateID
-        JOIN Clusters cl ON p.clusterID = cl.clusterID
-        JOIN Categories c ON p.categoryID = c.categoryID
-        WHERE p.userID = @userID
+          r.rateamount,
+          cl.clustername,
+          c.categoryname
+        FROM properties p
+        JOIN users u ON p.userid = u.userid
+        JOIN rate r ON p.rateid = r.rateid
+        JOIN clusters cl ON p.clusterid = cl.clusterid
+        JOIN categories c ON p.categoryid = c.categoryid
+        WHERE p.userid = $1
       `;
     }
 
-    const result = await pool
-      .request()
-      .input('userID', sql.Int, userID)
-      .query(query);
+    const result = await client.query(query, [userid]);
 
-    const properties = result.recordset.map(property => ({
+    const properties = result.rows.map(property => ({
       ...property,
-      propertyImage: property.propertyImage ? property.propertyImage.split(',') : []
+      propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
     }));
 
     res.status(200).json({ properties });
   } catch (err) {
     console.error('Error fetching properties: ', err);
     res.status(500).json({ error: 'Internal Server Error', details: err.message });
-  } 
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
 });
 
 // Update an existing property listing by property ID
