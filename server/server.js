@@ -104,93 +104,103 @@ app.post('/register', async (req, res) => {
 
   try {
     client = await pool.connect();
-      // 检查用户名或邮箱是否已存在
-      const checkUserQuery = {
-          text: `
-              SELECT username, "uemail" FROM "users"
-              WHERE username = $1 OR "uemail" = $2
-          `,
-          values: [username, email]
-      };
+    // 检查用户名或邮箱是否已存在
+    const checkUserQuery = {
+        text: `
+            SELECT username, "uemail" FROM "users"
+            WHERE username = $1 OR "uemail" = $2
+        `,
+        values: [username, email]
+    };
 
-      const checkResult = await client.query(checkUserQuery);
+    const checkResult = await client.query(checkUserQuery);
 
-      if (checkResult.rows.length > 0) {
-          return res.status(409).json({ message: 'Username or email already exists', success: false });
-      }
-
-      // 获取默认头像
-      const defaultAvatarBase64 = await getDefaultAvatarBase64();
-
-      // 插入新用户
-      const insertUserQuery = {
-          text: `
-              INSERT INTO "users" (username, password, "uemail", "utitle", "usergroup", "ustatus", "uactivation", "uimage")
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          `,
-          values: [
-              username, 
-              password, 
-              email, 
-              "Mr.", 
-              'Customer', 
-              'registered', 
-              'Active', 
-              defaultAvatarBase64
-          ]
-      };
-
-      await client.query(insertUserQuery);
-
-      res.status(201).json({ message: 'User registered successfully', success: true });
-  } catch (err) {
-    console.error('Error during registration:', err.message);
-      
-    // 错误发生时立即诊断数据库连接和表
-    try {
-        console.log('执行数据库诊断...');
-        
-        // 检查数据库连接
-        const connectionTest = await pool.query('SELECT 1 as connection_test');
-        console.log('数据库连接状态: ', connectionTest.rows.length ? '成功' : '失败');
-        
-        // 检查users表是否存在
-        const tableCheck = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_schema = 'public' 
-                AND table_name = 'users'
-            ) as table_exists;
-        `);
-        
-        const tableExists = tableCheck.rows[0].table_exists;
-        console.log('users表是否存在: ', tableExists ? '是' : '否');
-        
-        if (tableExists) {
-            // 显示表结构
-            const columns = await pool.query(`
-                SELECT column_name, data_type, character_maximum_length
-                FROM information_schema.columns
-                WHERE table_schema = 'public'
-                AND table_name = 'users';
-            `);
-            
-            console.log('表结构:');
-            columns.rows.forEach(col => {
-                console.log(`- ${col.column_name}: ${col.data_type}${col.character_maximum_length ? '(' + col.character_maximum_length + ')' : ''}`);
-            });
-            
-            // 尝试查询表中的记录数
-            const countQuery = await pool.query('SELECT COUNT(*) FROM "users"');
-            console.log('表中记录数: ', countQuery.rows[0].count);
-        }
-    } catch (diagError) {
-        console.error('诊断过程中出错:', diagError.message);
+    if (checkResult.rows.length > 0) {
+        return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
 
-      console.error('Error during registration:', err);
-      console.error(err.stack); 
-      res.status(500).json({ message: 'Server error', success: false });
+    // 获取默认头像
+    const defaultAvatarBase64 = await getDefaultAvatarBase64();
+
+    // 插入新用户
+    const insertUserQuery = {
+        text: `
+            INSERT INTO "users" (username, password, "uemail", "utitle", "usergroup", "ustatus", "uactivation", "uimage")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        values: [
+            username, 
+            password, 
+            email, 
+            "Mr.", 
+            'Customer', 
+            'registered', 
+            'Active', 
+            defaultAvatarBase64
+        ]
+    };
+
+    await client.query(insertUserQuery);
+
+    res.status(201).json({ message: 'User registered successfully', success: true });
+  } catch (err) {
+    console.error('Error during registration:', err.message);
+    console.error(err.stack);
+    res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    // 关键修复：确保始终释放数据库连接
+    if (client) {
+      client.release();
+    }
+    
+    // 错误诊断可以放在释放连接之后，使用新的连接
+    if (res.statusCode === 500) {
+      try {
+        console.log('执行数据库诊断...');
+        const diagClient = await pool.connect();
+        try {
+          // 检查数据库连接
+          const connectionTest = await diagClient.query('SELECT 1 as connection_test');
+          console.log('数据库连接状态: ', connectionTest.rows.length ? '成功' : '失败');
+          
+          // 检查users表是否存在
+          const tableCheck = await diagClient.query(`
+              SELECT EXISTS (
+                  SELECT FROM information_schema.tables 
+                  WHERE table_schema = 'public' 
+                  AND table_name = 'users'
+              ) as table_exists;
+          `);
+          
+          const tableExists = tableCheck.rows[0].table_exists;
+          console.log('users表是否存在: ', tableExists ? '是' : '否');
+          
+          if (tableExists) {
+              // 显示表结构
+              const columns = await diagClient.query(`
+                  SELECT column_name, data_type, character_maximum_length
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                  AND table_name = 'users';
+              `);
+              
+              console.log('表结构:');
+              columns.rows.forEach(col => {
+                  console.log(`- ${col.column_name}: ${col.data_type}${col.character_maximum_length ? '(' + col.character_maximum_length + ')' : ''}`);
+              });
+              
+              // 尝试查询表中的记录数
+              const countQuery = await diagClient.query('SELECT COUNT(*) FROM "users"');
+              console.log('表中记录数: ', countQuery.rows[0].count);
+          }
+        } finally {
+          // 确保诊断连接也被释放
+          diagClient.release();
+        }
+      } catch (diagError) {
+          console.error('诊断过程中出错:', diagError.message);
+      }
+    }
   }
 });
 
