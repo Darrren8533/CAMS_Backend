@@ -153,7 +153,7 @@ app.post('/register', async (req, res) => {
     console.error(err.stack);
     res.status(500).json({ message: 'Server error', success: false });
   } finally {
-    // 关键修复：确保始终释放数据库连接
+    
     if (client) {
       client.release();
     }
@@ -915,21 +915,32 @@ app.delete('/propertiesListing/:propertyID', async (req, res) => {
 // Check user status by userID
 app.get('/checkStatus', async(req, res) => {
   const { userID } = req.query;
+  let client;
 
   try {
-    const result = await pool.request()
-      .input('userID', sql.VarChar, userID)
-      .query('SELECT uStatus FROM Users WHERE userID = @userID');
-
-    if (result.recordset.length > 0) {
-      const uStatus = result.recordset[0].uStatus;
-      res.status(200).json({ uStatus });
-    }else {
+    client = await pool.connect();
+    
+    const query = {
+      text: 'SELECT "ustatus" FROM "users" WHERE "userid" = $1',
+      values: [userID]
+    };
+    
+    const result = await client.query(query);
+    
+    if (result.rows.length > 0) {
+      const ustatus = result.rows[0].ustatus;
+      res.status(200).json({ ustatus });
+    } else {
       res.status(404).json({ message: 'User not found' });
     }
-  }catch (err) {
+  } catch (err) {
     console.error('Error fetching user status:', err);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    // 确保释放数据库连接
+    if (client) {
+      client.release();
+    }
   }
 });
 
