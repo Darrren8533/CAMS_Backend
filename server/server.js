@@ -665,25 +665,34 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
 
 // Fetch list of all property listings (Product)
 app.get('/product', async (req, res) => {
+  let client;
   try {
-    const result = await pool.request().query(`
-      SELECT p.*, u.username, r.rateAmount, c.categoryName 
-      FROM Properties p
-      JOIN Rate r ON p.rateID = r.rateID
-      JOIN Categories c ON p.categoryID = c.categoryID
-      JOIN Users u ON p.userID = u.userID
-      WHERE p.propertyStatus = 'Available'
-    `);
-
-    const properties = result.recordset.map(property => ({
+    client = await pool.connect();
+    
+    const query = `
+      SELECT p.*, u.username, r.rateamount, c.categoryname 
+      FROM properties p
+      JOIN rate r ON p.rateid = r.rateid
+      JOIN categories c ON p.categoryid = c.categoryid
+      JOIN users u ON p.userid = u.userid
+      WHERE p.propertystatus = 'Available'
+    `;
+    
+    const result = await client.query(query);
+    
+    const properties = result.rows.map(property => ({
       ...property,
-      propertyImage: property.propertyImage ? property.propertyImage.split(',') : []
+      propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
     }));
-
+    
     res.status(200).json(properties);
   } catch (err) {
     console.error('Error fetching properties: ', err);
     res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
