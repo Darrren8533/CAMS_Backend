@@ -332,17 +332,21 @@ app.get('/users/customers', async (req, res) => {
 });
 
 // Fetch list of owners
-app.get('/users/owners', async (req, res) => {
+app.get("/users/owners", async (req, res) => {
+  let client;
   try {
-    const result = await pool.request().query(`
-      SELECT userID, username, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uGender, userGroup, uTitle
-      FROM Users
-      WHERE userGroup = 'Owner'
+    client = await pool.connect();
+    const result = await client.query(`
+      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, ugender, usergroup, utitle
+      FROM users
+      WHERE usergroup = 'Owner'
     `);
-    res.status(200).json(result.recordset);
+    res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching owners:', err);
-    res.status(500).json({ message: 'Server error', success: false });
+    console.error("Error fetching owners:", err);
+    res.status(500).json({ message: "Server error", success: false });
+  } finally {
+    if (client) client.release();
   }
 });
 
@@ -352,7 +356,7 @@ app.get("/users/moderators", async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ugender, ucountry, uzipcode, utitle
       FROM users
       WHERE usergroup = 'Moderator'
     `);
@@ -361,42 +365,48 @@ app.get("/users/moderators", async (req, res) => {
     console.error("Error fetching moderators:", err);
     res.status(500).json({ message: "Server error", success: false });
   } finally {
-    if (client) {
-      client.release();
-    }
+    if (client) client.release();
   }
 });
 
-
 // Fetch list of operators (Moderators and Administrators)
-app.get('/users/operators', async (req, res) => {
+app.get("/users/operators", async (req, res) => {
+  let client;
   try {
-    const result = await pool.request().query(`
-      SELECT userID, username, uFirstName, uLastName, uEmail, uPhoneNo, userGroup, uActivation, uGender, uCountry, uZipCode, uTitle
-      FROM Users
-      WHERE userGroup IN ('Moderator', 'Administrator')
+    client = await pool.connect();
+    const result = await client.query(`
+      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ugender, ucountry, uzipcode, utitle
+      FROM users
+      WHERE usergroup IN ('Moderator', 'Administrator')
     `);
-    res.status(200).json(result.recordset);
+    res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching operators:', err);
-    res.status(500).json({ message: 'Server error', success: false });
+    console.error("Error fetching operators:", err);
+    res.status(500).json({ message: "Server error", success: false });
+  } finally {
+    if (client) client.release();
   }
 });
 
 // Fetch list of administrators
-app.get('/users/administrators', async (req, res) => {
+app.get("/users/administrators", async (req, res) => {
+  let client;
   try {
-    const result = await pool.request().query(`
-      SELECT userID, username, uFirstName, uLastName, uEmail, uPhoneNo, userGroup, uActivation, uGender, uCountry, uZipCode
-      FROM Users
-      WHERE userGroup = 'Administrator'
+    client = await pool.connect();
+    const result = await client.query(`
+      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ugender, ucountry, uzipcode
+      FROM users
+      WHERE usergroup = 'Administrator'
     `);
-    res.status(200).json(result.recordset);
+    res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching administrators:', err);
-    res.status(500).json({ message: 'Server error', success: false });
+    console.error("Error fetching administrators:", err);
+    res.status(500).json({ message: "Server error", success: false });
+  } finally {
+    if (client) client.release();
   }
 });
+
 
 // Create moderators
 app.post('/users/createModerator', async (req, res) => {
