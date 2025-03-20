@@ -115,9 +115,6 @@ app.post('/register', async (req, res) => {
 
     const checkResult = await client.query(checkUserQuery);
 
-    const countResult = await client.query('SELECT COUNT(*) as total FROM users');
-    console.log(`数据库中共有 ${countResult.rows[0].total} 个用户记录`);
-
     if (checkResult.rows.length > 0) {
         return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
@@ -154,55 +151,6 @@ app.post('/register', async (req, res) => {
     // 关键修复：确保始终释放数据库连接
     if (client) {
       client.release();
-    }
-    
-    // 错误诊断可以放在释放连接之后，使用新的连接
-    if (res.statusCode === 500) {
-      try {
-        console.log('执行数据库诊断...');
-        const diagClient = await pool.connect();
-        try {
-          // 检查数据库连接
-          const connectionTest = await diagClient.query('SELECT 1 as connection_test');
-          console.log('数据库连接状态: ', connectionTest.rows.length ? '成功' : '失败');
-          
-          // 检查users表是否存在
-          const tableCheck = await diagClient.query(`
-              SELECT EXISTS (
-                  SELECT FROM information_schema.tables 
-                  WHERE table_schema = 'public' 
-                  AND table_name = 'users'
-              ) as table_exists;
-          `);
-          
-          const tableExists = tableCheck.rows[0].table_exists;
-          console.log('users表是否存在: ', tableExists ? '是' : '否');
-          
-          if (tableExists) {
-              // 显示表结构
-              const columns = await diagClient.query(`
-                  SELECT column_name, data_type, character_maximum_length
-                  FROM information_schema.columns
-                  WHERE table_schema = 'public'
-                  AND table_name = 'users';
-              `);
-              
-              console.log('表结构:');
-              columns.rows.forEach(col => {
-                  console.log(`- ${col.column_name}: ${col.data_type}${col.character_maximum_length ? '(' + col.character_maximum_length + ')' : ''}`);
-              });
-              
-              // 尝试查询表中的记录数
-              const countQuery = await diagClient.query('SELECT COUNT(*) FROM "users"');
-              console.log('表中记录数: ', countQuery.rows[0].count);
-          }
-        } finally {
-          // 确保诊断连接也被释放
-          diagClient.release();
-        }
-      } catch (diagError) {
-          console.error('诊断过程中出错:', diagError.message);
-      }
     }
   }
 });
