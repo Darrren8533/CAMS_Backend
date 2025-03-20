@@ -332,7 +332,7 @@ app.get('/users/customers', async (req, res) => {
 });
 
 // Fetch list of owners
-app.get("/users/owners", async (req, res) => {
+app.get('/users/owners', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
@@ -374,7 +374,7 @@ app.get('/users/moderators', async (req, res) => {
 });
 
 // Fetch list of operators (Moderators and Administrators)
-app.get("/users/operators", async (req, res) => {
+app.get('/users/operators', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
@@ -415,7 +415,7 @@ app.get('/users/administrators', async (req, res) => {
 
 
 // Create moderators
-app.post("/users/createModerator", async (req, res) => {
+app.post('/users/createModerator', async (req, res) => {
   const { firstName, lastName, username, password, email, phoneNo, country, zipCode } = req.body;
   let client;
 
@@ -1884,7 +1884,7 @@ const getDefaultAvatarBase64 = () => {
 const generateRandomSixDigits = () => Math.floor(100000 + Math.random() * 900000);
 
 // Get User Details
-app.get("/users/:userID", async (req, res) => {
+app.get('/users/:userID', async (req, res) => {
   const { userID } = req.params;
 
   if (isNaN(userID)) {
