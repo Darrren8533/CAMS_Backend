@@ -100,8 +100,10 @@ process.on('SIGINT', async () => {
 // Registration
 app.post('/register', async (req, res) => {
   const { firstName, lastName, username, password, email } = req.body;
+  let client;
 
   try {
+    client = await pool.connect();
       // 检查用户名或邮箱是否已存在
       const checkUserQuery = {
           text: `
@@ -111,7 +113,7 @@ app.post('/register', async (req, res) => {
           values: [username, email]
       };
 
-      const checkResult = await pool.query(checkUserQuery);
+      const checkResult = await client.query(checkUserQuery);
 
       if (checkResult.rows.length > 0) {
           return res.status(409).json({ message: 'Username or email already exists', success: false });
@@ -138,7 +140,7 @@ app.post('/register', async (req, res) => {
           ]
       };
 
-      await pool.query(insertUserQuery);
+      await client.query(insertUserQuery);
 
       res.status(201).json({ message: 'User registered successfully', success: true });
   } catch (err) {
