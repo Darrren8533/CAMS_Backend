@@ -933,7 +933,7 @@ app.get('/checkStatus', async(req, res) => {
     
     // 修改查询，获取更多用户信息
     const query = {
-      text: 'SELECT userid, username, ustatus, uemail, ufirstname, ulastname FROM "users" ',
+      text: 'SELECT userid, username, ustatus, uemail, ufirstname, ulastname FROM users',
       values: [userID]
     };
     
