@@ -285,20 +285,31 @@ app.post("/google-login", async (req, res) => {
   }
 });
 
-// User logout endpoint
+// 用户退出登录端点
 app.post('/logout', async (req, res) => {
   const { userID } = req.body;
+  let client;
 
   try {
-    // Update user status to logged out
-    await pool.request()
-      .input('userID', sql.VarChar, userID)
-      .query("UPDATE Users SET uStatus = 'logout' WHERE userID = @userID");
+    client = await pool.connect();
+    
+    // 更新用户状态为已登出
+    const query = {
+      text: "UPDATE users SET ustatus = 'logout' WHERE userid = $1",
+      values: [userID]
+    };
+    
+    await client.query(query);
 
     res.status(200).json({ message: 'Logout Successful', success: true });
   } catch (err) {
     console.error('Error during logout:', err);
     res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    // 确保释放数据库连接
+    if (client) {
+      client.release();
+    }
   }
 });
 
