@@ -525,42 +525,82 @@ app.delete('/users/removeUser/:userID', async (req, res) => {
 });
 
 // Suspend users by user ID
-app.put('/users/suspendUser/:userID', async (req, res) => {
-  try {
-    const { userID } = req.params;
+app.put('/users/suspenduser/:userid', async (req, res) => {
+  const { userid } = req.params;
+  let client;
 
-    await pool.request()
-      .input('userID', sql.Int, userID)
-      .query(`
-        UPDATE Users
-        SET uActivation = 'Inactive'
-        WHERE userID = @userID
-      `);
+  // Validate userid
+  if (isNaN(userid)) {
+    return res.status(400).json({ message: 'Invalid userid' });
+  }
+
+  try {
+    client = await pool.connect();
+
+    // Check if the user exists
+    const userCheck = await client.query(
+      `SELECT userid FROM users WHERE userid = $1`,
+      [userid]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Suspend the user
+    await client.query(
+      `UPDATE users SET uactivation = 'Inactive' WHERE userid = $1`,
+      [userid]
+    );
 
     res.status(200).json({ message: 'User suspended successfully' });
   } catch (err) {
     console.error('Error suspending user:', err);
     res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
-// Activate users by user ID
-app.put('/users/activateUser/:userID', async (req, res) => {
-  try {
-    const { userID } = req.params;
+// Activate users by userid
+app.put('/users/activateuser/:userid', async (req, res) => {
+  const { userid } = req.params;
+  let client;
 
-    await pool.request()
-      .input('userID', sql.Int, userID)
-      .query(`
-        UPDATE Users
-        SET uActivation = 'Active'
-        WHERE userID = @userID
-      `);
+  // Validate userid
+  if (isNaN(userid)) {
+    return res.status(400).json({ message: 'Invalid userid' });
+  }
+
+  try {
+    client = await pool.connect();
+
+    // Check if the user exists
+    const userCheck = await client.query(
+      `SELECT userid FROM users WHERE userid = $1`,
+      [userid]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Activate the user
+    await client.query(
+      `UPDATE users SET uactivation = 'Active' WHERE userid = $1`,
+      [userid]
+    );
 
     res.status(200).json({ message: 'User activated successfully' });
   } catch (err) {
     console.error('Error activating user:', err);
     res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
