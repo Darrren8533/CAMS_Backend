@@ -351,21 +351,22 @@ app.get("/users/owners", async (req, res) => {
 });
 
 // Fetch list of moderators
-app.get("/users/moderators", async (req, res) => {
+app.get('/users/moderators', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
+
+    // Query to fetch moderators
     const result = await client.query(`
-      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ugender, ucountry, uzipcode, utitle
+      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
       FROM users
       WHERE usergroup = 'Moderator'
     `);
-    res.status(200).json({ success: true, data: result.rows });
+    res.json(result.rows);
   } catch (err) {
-    console.error("Error fetching moderators:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error('Error fetching moderators:', err);
+    res.status(500).json({ message: 'Server error', success: false });
   } finally {
-
     if (client) {
       client.release();
     }
@@ -392,21 +393,23 @@ app.get("/users/operators", async (req, res) => {
 });
 
 // Fetch list of administrators
-app.get("/users/administrators", async (req, res) => {
+app.get('/users/administrators', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ugender, ucountry, uzipcode
+      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
       FROM users
       WHERE usergroup = 'Administrator'
     `);
     res.json(result.rows);
   } catch (err) {
-    console.error("Error fetching administrators:", err);
-    res.status(500).json({ message: "Server error", success: false });
+    console.error('Error fetching administrators:', err);
+    res.status(500).json({ message: 'Server error', success: false });
   } finally {
-    if (client) client.release();
+    if (client) {
+      client.release();
+    }
   }
 });
 
