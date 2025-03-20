@@ -1824,10 +1824,12 @@ app.get('/operatorProperties/:userID', async (req, res) => {
 // Get user information
 app.get('/getUserInfo/:userID', async (req, res) => {
   const { userID } = req.params;
+  let client;
 
   try {
-    // PostgreSQL使用numbered parameters ($1, $2, etc.)而不是named parameters
-    const result = await pool.query(
+    client = await pool.connect();
+    
+    const result = await client.query(
       `SELECT 
         "uTitle",
         "uFirstName",
