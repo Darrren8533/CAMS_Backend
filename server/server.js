@@ -360,12 +360,15 @@ app.get("/users/moderators", async (req, res) => {
       FROM users
       WHERE usergroup = 'Moderator'
     `);
-    res.json(result.rows);
+    res.status(200).json({ success: true, data: result.rows });
   } catch (err) {
     console.error("Error fetching moderators:", err);
-    res.status(500).json({ message: "Server error", success: false });
+    res.status(500).json({ success: false, message: "Server error" });
   } finally {
-    if (client) client.release();
+
+    if (client) {
+      client.release();
+    }
   }
 });
 
