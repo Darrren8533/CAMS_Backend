@@ -1826,24 +1826,24 @@ app.get('/getUserInfo/:userID', async (req, res) => {
   const { userID } = req.params;
 
   try {
-    const result = await pool.request()
-      .input('userID', sql.Int, userID)
-      .query(`
-        SELECT 
-          uTitle,
-          uFirstName,
-          uLastName,
-          uEmail,
-          uPhoneNo
-        FROM Users
-        WHERE userID = @userID
-      `);
+    // PostgreSQL使用numbered parameters ($1, $2, etc.)而不是named parameters
+    const result = await pool.query(
+      `SELECT 
+        "uTitle",
+        "uFirstName",
+        "uLastName",
+        "uEmail",
+        "uPhoneNo"
+      FROM "Users"
+      WHERE "userID" = $1`,
+      [userID] // 参数作为数组传递
+    );
 
-    if (result.recordset.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User information not found' });
     }
 
-    res.json(result.recordset[0]);
+    res.json(result.rows[0]);
   } catch (err) {
     console.error('Error getting user information:', err);
     res.status(500).json({ message: 'Server error' });
