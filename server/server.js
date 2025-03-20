@@ -115,6 +115,9 @@ app.post('/register', async (req, res) => {
 
     const checkResult = await client.query(checkUserQuery);
 
+    const countResult = await client.query('SELECT COUNT(*) as total FROM users');
+    console.log(`数据库中共有 ${countResult.rows[0].total} 个用户记录`);
+
     if (checkResult.rows.length > 0) {
         return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
