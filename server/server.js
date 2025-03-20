@@ -313,7 +313,6 @@ app.post('/logout', async (req, res) => {
   }
 });
 
-// Fetch list of customers
 app.get('/users/customers', async (req, res) => {
   let client;
   try {
@@ -323,12 +322,15 @@ app.get('/users/customers', async (req, res) => {
       FROM users
       WHERE usergroup = 'Customer'
     `);
-    // res.status(200).json(result.recordset);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching customers:', err);
     res.status(500).json({ message: 'Server error', success: false });
-  } 
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
 });
 
 // Fetch list of owners
