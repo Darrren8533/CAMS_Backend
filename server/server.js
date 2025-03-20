@@ -409,50 +409,40 @@ app.get("/users/administrators", async (req, res) => {
 
 
 // Create moderators
-app.post('/users/createModerator', async (req, res) => {
+app.post("/users/createModerator", async (req, res) => {
   const { firstName, lastName, username, password, email, phoneNo, country, zipCode } = req.body;
+  let client;
 
   try {
-    // Check if the username or email already exists
-    const checkUser = await pool.request()
-      .input('username', sql.VarChar, username)
-      .input('email', sql.VarChar, email)
-      .query(`
-        SELECT username, uEmail FROM Users
-        WHERE username = @username OR uEmail = @email
-      `);
+    client = await pool.connect();
 
-    if (checkUser.recordset.length > 0) {
-      return res.status(409).json({ message: 'Username or email already exists', success: false });
+    // Check if the username or email already exists
+    const checkUser = await client.query(
+      `SELECT username, uemail FROM users WHERE username = $1 OR uemail = $2`,
+      [username, email]
+    );
+
+    if (checkUser.rows.length > 0) {
+      return res.status(409).json({ message: "Username or email already exists", success: false });
     }
 
     // Insert new user into the database
-    await pool.request()
-      .input('firstName', sql.VarChar, firstName)
-      .input('lastName', sql.VarChar, lastName)
-      .input('username', sql.VarChar, username)
-      .input('password', sql.VarChar, password)  
-      .input('email', sql.VarChar, email)
-      .input('phoneNo', sql.BigInt, phoneNo)
-      .input('country', sql.VarChar, country)
-      .input('zipCode', sql.Int, zipCode)
-      .input('uTitle', sql.NVarChar, 'Mr.')
-      .input('userGroup', sql.VarChar, 'Moderator')  
-      .input('uStatus', sql.VarChar, 'registered')
-      .input('uActivation', sql.VarChar, 'Active')
-      
-      
-      .query(`
-        INSERT INTO Users (uFirstName, uLastName, username, password, uEmail, uPhoneNo, uCountry, uZipCode, uTitle, userGroup, uStatus, uActivation)
-        VALUES (@firstName, @lastName, @username, @password, @email, @phoneNo, @country, @zipCode, @uTitle,  @userGroup, @uStatus, @uActivation)
-      `);
+    await client.query(
+      `INSERT INTO users (ufirstname, ulastname, username, password, uemail, uphoneno, ucountry, uzipcode, utitle, usergroup, ustatus, uactivation)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Mr.', 'Moderator', 'registered', 'Active')`,
+      [firstName, lastName, username, password, email, phoneNo, country, zipCode]
+    );
 
-    res.status(201).json({ message: 'User registered successfully', success: true });
+    res.status(201).json({ message: "User registered successfully", success: true });
+
   } catch (err) {
-    console.error('Error during registration:', err);
-    res.status(500).json({ message: 'Server error', success: false });
+    console.error("Error during registration:", err);
+    res.status(500).json({ message: "Server error", success: false });
+  } finally {
+    if (client) client.release();
   }
 });
+
 
 // Update users by user ID
 app.put('/users/updateUser/:userID', async (req, res) => {
