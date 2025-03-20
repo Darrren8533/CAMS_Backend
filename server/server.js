@@ -1769,7 +1769,7 @@ app.post('/forgot-password', async (req, res) => {
 // Avatar 
 const getDefaultAvatarBase64 = () => {
   return new Promise((resolve, reject) => {
-      const defaultAvatarPath = path.join(__dirname, '../../Frontend/src/public/avatar.png'); 
+      const defaultAvatarPath = path.join(__dirname, '/public/avatar.png'); 
       fs.readFile(defaultAvatarPath, (err, data) => {
           if (err) {
               reject(err);
