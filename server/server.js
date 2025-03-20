@@ -208,80 +208,78 @@ app.post('/login', async (req, res) => {
   }
 });
 
-//Google login
+// Google login
 app.post("/google-login", async (req, res) => {
   const { token } = req.body;
 
   try {
-      // Get user info from Google
-      const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-          headers: { Authorization: `Bearer ${token}` }
-      });
-      const googleUser = await response.json();
+    // Get user info from Google
+    const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const googleUser = await response.json();
 
-      if (!googleUser.email) {
-          return res.status(401).json({ success: false, message: "Invalid Google token" });
-      }
+    if (!googleUser.email) {
+      return res.status(401).json({ success: false, message: "Invalid Google token" });
+    }
 
-      const { email, given_name, family_name, picture } = googleUser;
-      console.log("Google User Data:", googleUser); 
+    const { email, given_name, family_name, picture } = googleUser;
+    console.log("Google User Data:", googleUser);
 
+    const client = await pool.connect();
+
+    try {
       // Check if user exists
-      const result = await pool.request()
-         .input("email", sql.VarChar, email)
-         .query("SELECT userID, userGroup, uActivation, username FROM Users WHERE uEmail = @email");
+      const result = await client.query(
+        "SELECT userid, usergroup, uactivation, username FROM users WHERE uemail = $1",
+        [email]
+      );
 
       let username;
-      if (result.recordset.length > 0) {
-          // Existing user, update login status
-          const { userID, userGroup, uActivation, username: existingUsername } = result.recordset[0];
-          username = existingUsername;
+      if (result.rows.length > 0) {
+        // Existing user, update login status
+        const { userid, usergroup, uactivation, username: existingUsername } = result.rows[0];
+        username = existingUsername;
 
-          await pool.request()
-             .input("email", sql.VarChar, email)
-             .query("UPDATE Users SET uStatus = 'login' WHERE uEmail = @email");
+        await client.query("UPDATE users SET ustatus = 'login' WHERE uemail = $1", [email]);
 
-          return res.status(200).json({
-              success: true,
-              message: "Google Login Successful",
-              userID,
-              userGroup,
-              uActivation,
-              username
-          });
+        return res.status(200).json({
+          success: true,
+          message: "Google Login Successful",
+          userID: userid,
+          userGroup: usergroup,
+          uActivation: uactivation,
+          username,
+        });
       } else {
+        const randomSixDigits = generateRandomSixDigits();
+        username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
 
-          const randomSixDigits = generateRandomSixDigits();
-          username = given_name? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
+        // Insert new Google user
+        const insertResult = await client.query(
+          `INSERT INTO users (uemail, ufirstname, ulastname, uimage, utitle, ustatus, usergroup, uactivation, username)
+           VALUES ($1, $2, $3, $4, 'Mr.', 'login', 'Customer', 'Active', $5) 
+           RETURNING userid`,
+          [email, given_name || null, family_name || null, picture || null, username]
+        );
 
-          // Insert new Google user
-          const insertResult = await pool.request()
-             .input("email", sql.VarChar, email)
-             .input("uFirstName", sql.VarChar, given_name? given_name : null)
-             .input("uLastName", sql.VarChar, family_name? family_name : null)
-             .input("uImage", sql.VarChar, picture? picture : null)
-             .input("uTitle", sql.VarChar, "Mr.")
-             .input("username", sql.VarChar, username)
-             .query(`
-                INSERT INTO Users (uEmail, uFirstName, uLastName, uImage, uTitle, uStatus, userGroup, uActivation, username) 
-                OUTPUT Inserted.userID
-                VALUES (@email, @uFirstName, @uLastName, @uImage, @uTitle, 'login', 'Customer', 'Active', @username)
-              `);
+        const newUserID = insertResult.rows[0].userid;
 
-          const newUserID = insertResult.recordset[0].userID;
-
-          return res.status(201).json({
-              success: true,
-              message: "Google Login Successful, new user created",
-              userID: newUserID,
-              userGroup: "Customer",
-              uActivation: "Active",
-              username
-          });
+        return res.status(201).json({
+          success: true,
+          message: "Google Login Successful, new user created",
+          userID: newUserID,
+          userGroup: "Customer",
+          uActivation: "Active",
+          username,
+        });
       }
+    } finally {
+      client.release();
+    }
   } catch (error) {
-      console.error("Google Login Error:", error);
-      return res.status(500).json({ success: false, message: "Google Login Failed" });
+    console.error("Google Login Error:", error);
+    return res.status(500).json({ success: false, message: "Google Login Failed" });
   }
 });
 
