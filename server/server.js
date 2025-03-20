@@ -571,99 +571,95 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       return res.status(400).json({ error: 'Please upload at least 5 property images.' });
   }
 
+  let client;
   try {
-      // Fetch user ID and userGroup for property owner
-      const userResult = await pool.request()
-          .input('username', sql.VarChar, username)
-          .query('SELECT userID, userGroup FROM Users WHERE username = @username');
+      client = await pool.connect();
+      
+      // 开始事务
+      await client.query('BEGIN');
 
-      if (userResult.recordset.length === 0) {
+      // Fetch user ID and userGroup for property owner
+      const userResult = await client.query(
+          'SELECT userid, usergroup FROM users WHERE username = $1',
+          [username]
+      );
+
+      if (userResult.rows.length === 0) {
           return res.status(404).json({ error: 'User not found' });
       }
 
-      const { userID, userGroup } = userResult.recordset[0];
+      const { userid, usergroup } = userResult.rows[0];
 
       // Determine propertyStatus based on userGroup
-      const propertyStatus = userGroup === 'Administrator' ? 'Available' : 'Pending';
+      const propertyStatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
 
       // Convert images to base64 and concatenate them
       const base64Images = req.files.map(file => file.buffer.toString('base64'));
       const concatenatedImages = base64Images.join(',');
 
-      const rateResult = await pool.request()
-          .input('rateAmount', sql.Decimal(18, 2), propertyPrice)
-          .input('rateType', sql.VarChar, "DefaultType") 
-          .input('period', sql.VarChar, "DefaultPeriod") 
-          .query(`
-              INSERT INTO Rate (rateAmount, rateType, period)
-              OUTPUT inserted.rateID
-              VALUES (@rateAmount, @rateType, @period)
-          `);
+      // Insert rate
+      const rateResult = await client.query(
+          `INSERT INTO rate (rateamount, ratetype, period)
+           VALUES ($1, $2, $3)
+           RETURNING rateid`,
+          [propertyPrice, "DefaultType", "DefaultPeriod"]
+      );
+      const rateID = rateResult.rows[0].rateid;
 
-      const rateID = rateResult.recordset[0].rateID;
+      // Insert category
+      const categoryResult = await client.query(
+          `INSERT INTO categories (categoryname, availablestates)
+           VALUES ($1, $2)
+           RETURNING categoryid`,
+          [categoryName, "DefaultStates"]
+      );
+      const categoryID = categoryResult.rows[0].categoryid;
 
-      const categoryResult = await pool.request()
-          .input('categoryName', sql.VarChar, categoryName)
-          .input('availableStates', sql.VarChar, "DefaultStates") 
-          .query(`
-              INSERT INTO Categories (categoryName, availableStates)
-              OUTPUT inserted.categoryID
-              VALUES (@categoryName, @availableStates)
-          `);
-
-      const categoryID = categoryResult.recordset[0].categoryID;
-
-      const clusterResult = await pool.request()
-          .input('clusterName', sql.VarChar, clusterName) 
-          .input('clusterState', sql.VarChar, "DefaultState") 
-          .input('clusterProvince', sql.VarChar, "DefaultProvince") 
-          .query(`
-              INSERT INTO Clusters (clusterName, clusterState, clusterProvince)
-              OUTPUT inserted.clusterID
-              VALUES (@clusterName, @clusterState, @clusterProvince)
-          `);
-
-      const clusterID = clusterResult.recordset[0].clusterID;
+      // Insert cluster
+      const clusterResult = await client.query(
+          `INSERT INTO clusters (clustername, clusterstate, clusterprovince)
+           VALUES ($1, $2, $3)
+           RETURNING clusterid`,
+          [clusterName, "DefaultState", "DefaultProvince"]
+      );
+      const clusterID = clusterResult.rows[0].clusterid;
     
-      // Insert new property into Properties table
-      const propertyListingResult = await pool.request()
-          .input('propertyNo', sql.VarChar, "1") 
-          .input('userID', sql.Int, userID)
-          .input('clusterID', sql.Int, clusterID) 
-          .input('categoryID', sql.Int, categoryID) 
-          .input('rateID', sql.Int, rateID) 
-          .input('propertyAddress', sql.VarChar, propertyAddress)
-          .input('propertyBedType', sql.VarChar, propertyBedType)
-          .input('propertyBedImage', sql.VarChar(sql.MAX), "1")
-          .input('propertyGuestPaxNo', sql.VarChar, propertyGuestPaxNo)
-          .input('propertyDescription', sql.VarChar, propertyDescription)
-          .input('propertyImage', sql.VarChar(sql.MAX), concatenatedImages)
-          .input('propertyStatus', sql.VarChar, propertyStatus)
-          .input('nearbyLocation', sql.VarChar, nearbyLocation)
-          .input('facilities', sql.VarChar(sql.MAX), facilities)
-          .input('policies', sql.VarChar(sql.MAX), "policies")
-          .query(`
-              INSERT INTO Properties (
-                  propertyNo, userID, clusterID, categoryID, rateID,
-                  propertyDescription, propertyAddress,
-                  propertyBedType, propertyBedImage, propertyGuestPaxNo, propertyImage,
-                  propertyStatus, nearbyLocation, facilities, policies
-              )
-              OUTPUT inserted.propertyID
-              VALUES (
-                  @propertyNo, @userID, @clusterID, @categoryID, @rateID,
-                  @propertyDescription, @propertyAddress,
-                  @propertyBedType, @propertyBedImage, @propertyGuestPaxNo, @propertyImage,
-                  @propertyStatus, @nearbyLocation, @facilities, @policies
-              )
-          `);
+      // Insert property
+      const propertyListingResult = await client.query(
+          `INSERT INTO properties (
+              propertyno, userid, clusterid, categoryid, rateid,
+              propertydescription, propertyaddress,
+              propertybedtype, propertybedimage, propertyguestpaxno, propertyimage,
+              propertystatus, nearbylocation, facilities, policies
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          RETURNING propertyid`,
+          [
+              "1", userid, clusterID, categoryID, rateID,
+              propertyDescription, propertyAddress,
+              propertyBedType, "1", propertyGuestPaxNo, concatenatedImages,
+              propertyStatus, nearbyLocation, facilities, "policies"
+          ]
+      );
 
-      const propertyID = propertyListingResult.recordset[0].propertyID;
+      const propertyID = propertyListingResult.rows[0].propertyid;
+      
+      // 提交事务
+      await client.query('COMMIT');
 
       res.status(201).json({ message: 'Property created successfully', propertyID });
   } catch (err) {
+      // 回滚事务
+      if (client) {
+        await client.query('ROLLBACK');
+      }
       console.error('Error inserting property: ', err);
       res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  } finally {
+      // 释放连接
+      if (client) {
+        client.release();
+      }
   }
 });
 
