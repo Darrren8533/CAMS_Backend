@@ -102,36 +102,43 @@ app.post('/register', async (req, res) => {
   const { firstName, lastName, username, password, email } = req.body;
 
   try {
-      
-      const checkUser = await pool.request()
-         .input('username', sql.VarChar, username)
-         .input('email', sql.VarChar, email)
-         .query(`
-              SELECT username, uEmail FROM Users
-              WHERE username = @username OR uEmail = @email
-          `);
+      // 检查用户名或邮箱是否已存在
+      const checkUserQuery = {
+          text: `
+              SELECT username, "uEmail" FROM "Users"
+              WHERE username = $1 OR "uEmail" = $2
+          `,
+          values: [username, email]
+      };
 
-      if (checkUser.recordset.length > 0) {
+      const checkResult = await pool.query(checkUserQuery);
+
+      if (checkResult.rows.length > 0) {
           return res.status(409).json({ message: 'Username or email already exists', success: false });
       }
 
-
+      // 获取默认头像
       const defaultAvatarBase64 = await getDefaultAvatarBase64();
 
+      // 插入新用户
+      const insertUserQuery = {
+          text: `
+              INSERT INTO "Users" (username, password, "uEmail", "uTitle", "userGroup", "uStatus", "uActivation", "uImage")
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `,
+          values: [
+              username, 
+              password, 
+              email, 
+              "Mr.", 
+              'Customer', 
+              'registered', 
+              'Active', 
+              defaultAvatarBase64
+          ]
+      };
 
-      await pool.request()
-         .input('username', sql.VarChar, username)
-         .input('password', sql.VarChar, password)
-         .input('email', sql.VarChar, email)
-         .input('uTitle', sql.VarChar, "Mr.")
-         .input('userGroup', sql.VarChar, 'Customer')
-         .input('uStatus', sql.VarChar, 'registered')
-         .input('uActivation', sql.VarChar, 'Active')
-         .input('uImage', sql.VarChar(sql.MAX), defaultAvatarBase64) 
-         .query(`
-              INSERT INTO Users (username, password, uEmail, uTitle, userGroup, uStatus, uActivation, uImage)
-              VALUES (@username, @password, @email, @uTitle, @userGroup, @uStatus, @uActivation, @uImage)
-          `);
+      await pool.query(insertUserQuery);
 
       res.status(201).json({ message: 'User registered successfully', success: true });
   } catch (err) {
