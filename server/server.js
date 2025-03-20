@@ -938,7 +938,7 @@ app.get('/checkStatus', async(req, res) => {
     // 修改查询，获取更多用户信息
     const query = {
       text: 'SELECT userid, username, ustatus, uemail, ufirstname, ulastname FROM "users" WHERE "userid" = $1',
-      values: [userID]
+      values: [useridid]
     };
     
     const result = await client.query(query);
@@ -957,7 +957,7 @@ app.get('/checkStatus', async(req, res) => {
         userInfo: user  // 可选：同时返回用户信息给客户端
       });
     } else {
-      console.log('User not found for ID:', userID);
+      console.log('User not found for ID:', useridid);
       res.status(404).json({ message: 'User not found' });
     }
   } catch (err) {
