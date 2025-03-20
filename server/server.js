@@ -1166,28 +1166,36 @@ app.post('/suggestNewRoom/:propertyID/:reservationID', async (req, res) => {
 // Send Properties Listing Request Notification From Moderator
 app.post('/propertyListingRequest/:propertyID', async (req, res) => {
   const { propertyID } = req.params;
+  let client;
 
   try {
-    const moderatorResult = await pool.request()
-      .input('propertyID', sql.Int, propertyID)
-      .query(`SELECT p.propertyAddress, u.uLastName, u.uTitle, u.userGroup FROM Property p JOIN Users u ON u.userID = p.userID WHERE p.propertyID = @propertyID`);
+    client = await pool.connect();
+    
+    const moderatorResult = await client.query(
+      `SELECT p.propertyaddress, u.ulastname, u.utitle, u.usergroup 
+       FROM property p 
+       JOIN users u ON u.userid = p.userid 
+       WHERE p.propertyid = $1`,
+      [propertyID]
+    );
 
-    if (moderatorResult.recordset.length === 0) {
+    if (moderatorResult.rows.length === 0) {
       return res.status(404).json({ message: 'Property or moderator not found for this property listing request' });
-    } else if (moderatorResult.recordset[0].userGroup !== 'Moderator') {
+    } else if (moderatorResult.rows[0].usergroup !== 'Moderator') {
       return res.status(200).json({ message: 'Property Created Successfully' });
     }
 
-    const { propertyAddress: property, uLastName: moderatorLastName, uTitle: moderatorTitle } = moderatorResult.recordset[0];
+    const { propertyaddress: property, ulastname: moderatorLastName, utitle: moderatorTitle } = moderatorResult.rows[0];
 
-    const administratorResult = await pool.request()
-      .query(`SELECT uEmail FROM Users WHERE userGroup = 'Administrator'`)
+    const administratorResult = await client.query(
+      `SELECT uemail FROM users WHERE usergroup = 'Administrator'`
+    );
 
-    if (administratorResult.recordset.length === 0) {
+    if (administratorResult.rows.length === 0) {
       return res.status(404).json({ message: 'Administrators not found' });
     }
 
-    const adminEmails = administratorResult.recordset.map(record => record.uEmail);
+    const adminEmails = administratorResult.rows.map(record => record.uemail);
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1217,6 +1225,10 @@ app.post('/propertyListingRequest/:propertyID', async (req, res) => {
   } catch (err) {
     console.error('Error sending email: ', err);
     res.status(500).json({ message: 'Failed to send email', error: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
