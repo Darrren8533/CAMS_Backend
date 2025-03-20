@@ -928,6 +928,10 @@ app.get('/checkStatus', async(req, res) => {
   const { userID } = req.query;
   let client;
 
+  // 打印接收到的userID参数
+  console.log('Received userID parameter:', userID);
+  console.log('Full query parameters:', req.query);
+
   try {
     client = await pool.connect();
     
