@@ -1849,19 +1849,29 @@ app.get("/users/:userID", async (req, res) => {
     return res.status(400).json({ message: "Invalid userID" });
   }
 
+  let client;
   try {
-    const result = await pool.request()
-      .input("userID", sql.Int, userID)
-      .query("SELECT * FROM Users WHERE userID = @userID");
+    client = await pool.connect();
+    
+    const query = {
+      text: "SELECT * FROM users WHERE userid = $1",
+      values: [userID]
+    };
+    
+    const result = await client.query(query);
 
-    if (result.recordset.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.status(200).json(result.recordset[0]);
+    res.status(200).json(result.rows[0]);
   } catch (err) {
     console.error("Error fetching user data:", err);
     return res.status(500).json({ message: "Internal server error" });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
