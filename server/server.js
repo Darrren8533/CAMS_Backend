@@ -1825,19 +1825,20 @@ app.get('/operatorProperties/:userID', async (req, res) => {
 app.get('/getUserInfo/:userID', async (req, res) => {
   const { userID } = req.params;
   let client;
+  console.log(userID);
 
   try {
     client = await pool.connect();
     
     const result = await client.query(
       `SELECT 
-        "uTitle",
-        "uFirstName",
-        "uLastName",
-        "uEmail",
-        "uPhoneNo"
-      FROM "Users"
-      WHERE "userID" = $1`,
+        "utitle",
+        "ufirstname",
+        "ulastname",
+        "uemail",
+        "uphoneno"
+      FROM "users"
+      WHERE "userid" = $1`,
       [userID] // 参数作为数组传递
     );
 
