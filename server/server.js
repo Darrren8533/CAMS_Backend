@@ -925,7 +925,7 @@ app.delete('/propertiesListing/:propertyID', async (req, res) => {
 
 // Check user status by userID
 app.get('/checkStatus', async(req, res) => {
-  const { userid } = req.query;
+  const { userID } = req.query;
   let client;
 
   try {
@@ -934,7 +934,7 @@ app.get('/checkStatus', async(req, res) => {
     // 修改查询，获取更多用户信息
     const query = {
       text: 'SELECT userid, username, ustatus, uemail, ufirstname, ulastname FROM "users" WHERE "userid" = $1',
-      values: [userid]
+      values: [userID]
     };
     
     const result = await client.query(query);
