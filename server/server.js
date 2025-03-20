@@ -680,10 +680,41 @@ app.get('/product', async (req, res) => {
     
     const result = await client.query(query);
     
-    const properties = result.rows.map(property => ({
-      ...property,
-      propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
-    }));
+    // 打印原始查询结果中的第一个属性对象(如果存在)
+    if (result.rows.length > 0) {
+      console.log('Sample property object from database:');
+      console.log(JSON.stringify(result.rows[0], null, 2));
+    } else {
+      console.log('No properties found');
+    }
+    
+    const properties = result.rows.map(property => {
+      // 处理图片并打印处理前后的图片数据
+      console.log(`Property ID ${property.propertyid} - Original image data:`, 
+                  property.propertyimage ? property.propertyimage.substring(0, 50) + '...' : 'No image');
+      
+      const processedProperty = {
+        ...property,
+        propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
+      };
+      
+      console.log(`Property ID ${property.propertyid} - Processed image array length:`, 
+                  processedProperty.propertyimage.length);
+      
+      return processedProperty;
+    });
+    
+    // 打印处理后的第一个属性对象(如果存在)
+    if (properties.length > 0) {
+      console.log('Sample processed property object:');
+      // 克隆对象并截断图片数据以避免日志过大
+      const sampleProperty = {...properties[0]};
+      if (sampleProperty.propertyimage && sampleProperty.propertyimage.length > 0) {
+        sampleProperty.propertyimage = [`${sampleProperty.propertyimage[0].substring(0, 50)}... (truncated)`, 
+                                       `and ${sampleProperty.propertyimage.length - 1} more images`];
+      }
+      console.log(JSON.stringify(sampleProperty, null, 2));
+    }
     
     res.status(200).json(properties);
   } catch (err) {
