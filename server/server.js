@@ -1917,79 +1917,76 @@ app.get("/users/:userID", async (req, res) => {
   }
 });
 
-// Update Profile
 app.put('/users/updateProfile/:userID', async (req, res) => {
-const { userID } = req.params;
+  const { userID } = req.params;
+  let client;
 
-// Skip validation and assume all fields are provided correctly
-const { username, password, uFirstName, uLastName, uDOB, uTitle,  uGender,  uEmail, uPhoneNo, uCountry, uZipCode } = req.body;
+  // Skip validation and assume all fields are provided correctly
+  const { username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode } = req.body;
 
-try {
-  await pool.request()
-    .input('userID', sql.Int, userID)
-    .input('username', sql.VarChar, username)
-    .input('password', sql.VarChar, password)
-    .input('uFirstName', sql.VarChar, uFirstName)
-    .input('uLastName', sql.VarChar, uLastName)
-    .input('uDOB', sql.DateTime, uDOB)
-    .input('uTitle', sql.NVarChar, uTitle)
-    .input('uGender', sql.VarChar, uGender)
-    .input('uEmail', sql.VarChar, uEmail)
-    .input('uPhoneNo', sql.VarChar, uPhoneNo)
-    .input('uCountry', sql.VarChar, uCountry)
-    .input('uZipCode', sql.Int, uZipCode) 
-    .query(`
-      UPDATE Users SET 
-        username = @username, 
-        password = @password, 
-        uFirstName = @uFirstName, 
-        uLastName = @uLastName, 
-        uDOB = @uDOB,
-        uTitle = @uTitle,
-        uGender = @uGender,
-        uEmail = @uEmail, 
-        uPhoneNo = @uPhoneNo, 
-        uCountry = @uCountry, 
-        uZipCode = @uZipCode
-      WHERE userID = @userID
-    `);
+  try {
+    client = await pool.connect();
+    await client.query(
+      `UPDATE Users SET 
+        username = $1, 
+        password = $2, 
+        uFirstName = $3, 
+        uLastName = $4, 
+        uDOB = $5,
+        uTitle = $6,
+        uGender = $7,
+        uEmail = $8, 
+        uPhoneNo = $9, 
+        uCountry = $10, 
+        uZipCode = $11
+      WHERE userID = $12`,
+      [username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userID]
+    );
 
-  res.status(200).json({ message: 'Profile updated successfully.', success: true });
-} catch (err) {
-  console.error('Error updating owner profile:', err);
-  res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
-}
+    res.status(200).json({ message: 'Profile updated successfully.', success: true });
+  } catch (err) {
+    console.error('Error updating owner profile:', err);
+    res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
 });
 
 //Upload Avatar
-app.post('/users/uploadAvatar/:userID', async (req, res) => {
-  const { userID } = req.params;
-  const { uImage } = req.body; 
+app.post('/users/uploadavatar/:userid', async (req, res) => {
+  const { userid } = req.params;
+  const { uimage } = req.body;
+  let client;
 
-  // Validate userID
-  if (isNaN(userID)) {
-      console.error("Invalid userID:", userID);
-      return res.status(400).json({ message: 'Invalid userID' });
+  // Validate userid
+  if (isNaN(userid)) {
+    console.error("Invalid userid:", userid);
+    return res.status(400).json({ message: 'Invalid userid' });
   }
 
-
-  if (!uImage) {
-      console.error("No image data received");
-      return res.status(400).json({ message: 'No image data provided.' });
+  if (!uimage) {
+    console.error("No image data received");
+    return res.status(400).json({ message: 'No image data provided.' });
   }
 
   try {
+    client = await pool.connect();
+    await client.query(
+      `UPDATE users SET uimage = $1 WHERE userid = $2`,
+      [uimage, userid]
+    );
 
-      await pool.request()
-          .input('userID', sql.Int, userID)
-          .input('uImage', sql.VarChar(sql.MAX), uImage) 
-          .query(`UPDATE Users SET uImage = @uImage WHERE userID = @userID`);
-
-      console.log("Avatar uploaded successfully!");
-      return res.status(200).json({ message: 'Avatar uploaded successfully' });
+    console.log("Avatar uploaded successfully!");
+    return res.status(200).json({ message: 'Avatar uploaded successfully' });
   } catch (err) {
-      console.error("Error uploading avatar:", err);
-      return res.status(500).json({ message: 'Internal server error while uploading avatar.' });
+    console.error("Error uploading avatar:", err);
+    return res.status(500).json({ message: 'Internal server error while uploading avatar.' });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
