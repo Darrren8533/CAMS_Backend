@@ -101,47 +101,52 @@ process.on('SIGINT', async () => {
 app.post('/register', async (req, res) => {
   const { firstName, lastName, username, password, email } = req.body;
   let client;
-
+  
   try {
     client = await pool.connect();
     // 检查用户名或邮箱是否已存在
     const checkUserQuery = {
-        text: `
-            SELECT username, "uemail" FROM "users"
-            WHERE username = $1 OR "uemail" = $2
-        `,
-        values: [username, email]
+      text: `
+        SELECT username, "uemail" FROM "users"
+        WHERE username = $1 OR "uemail" = $2
+      `,
+      values: [username, email]
     };
-
+    
     const checkResult = await client.query(checkUserQuery);
-
+    
     if (checkResult.rows.length > 0) {
-        return res.status(409).json({ message: 'Username or email already exists', success: false });
+      return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
-
+    
     // 获取默认头像
     const defaultAvatarBase64 = await getDefaultAvatarBase64();
-
+    
     // 插入新用户
     const insertUserQuery = {
-        text: `
-            INSERT INTO "users" (username, password, "uemail", "utitle", "usergroup", "ustatus", "uactivation", "uimage")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `,
-        values: [
-            username, 
-            password, 
-            email, 
-            "Mr.", 
-            'Customer', 
-            'registered', 
-            'Active', 
-            defaultAvatarBase64
-        ]
+      text: `
+        INSERT INTO "users" (
+          username, password, "uemail", "utitle", "usergroup", "ustatus", "uactivation", "uimage",
+          "ufirstname", "ulastname"
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `,
+      values: [
+        username,
+        password,
+        email,
+        "Mr.",
+        'Customer',
+        'registered',
+        'Active',
+        defaultAvatarBase64,
+        firstName, // 添加 firstName
+        lastName   // 添加 lastName
+      ]
     };
-
+    
     await client.query(insertUserQuery);
-
+    
     res.status(201).json({ message: 'User registered successfully', success: true });
   } catch (err) {
     console.error('Error during registration:', err.message);
