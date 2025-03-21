@@ -125,7 +125,7 @@ app.post('/register', async (req, res) => {
     // 插入新用户
     const insertUserQuery = {
       text: `
-        INSERT INTO "users" (
+        INSERT INTO "Users" (
           username, password, "uEmail", "uTitle", "userGroup", "uStatus", "uActivation", "uImage",
           "uFirstName", "uLastName"
         )
