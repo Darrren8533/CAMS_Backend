@@ -1019,13 +1019,13 @@ app.delete('/propertiesListing/:propertyID', async (req, res) => {
   }
 });
 
-// Check user status by userid
+// Check user status by userID
 app.get('/checkStatus', async(req, res) => {
   const { userid } = req.query;
   let client;
 
-  // 打印接收到的userid参数
-  console.log('Received userid parameter:', userid);
+  // 打印接收到的userID参数
+  console.log('Received userID parameter:', userid);
   console.log('Full query parameters:', req.query);
 
   try {
