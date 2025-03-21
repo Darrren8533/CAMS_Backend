@@ -604,17 +604,17 @@ app.put('/users/activateuser/:userid', async (req, res) => {
   }
 });
 
-app.post('/propertiesListing', upload.array('propertyimage', 10), async (req, res) => {
+app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, res) => {
   const {
       username,
-      propertyprice,
-      propertyaddress,
-      clustername,
-      categoryname,
-      propertybedtype,
-      propertyguestpaxo,
-      propertydescription,
-      nearbylocation,
+      propertyPrice,
+      propertyAddress,
+      clusterName,
+      categoryName,
+      propertyBedType,
+      propertyGuestPaxNo,
+      propertyDescription,
+      nearbyLocation,
       facilities
   } = req.body;
 
@@ -629,7 +629,7 @@ app.post('/propertiesListing', upload.array('propertyimage', 10), async (req, re
       // 开始事务
       await client.query('BEGIN');
 
-      // Fetch user ID and usergroup for property owner
+      // Fetch user ID and userGroup for property owner
       const userResult = await client.query(
           'SELECT userid, usergroup FROM users WHERE username = $1',
           [username]
@@ -641,8 +641,8 @@ app.post('/propertiesListing', upload.array('propertyimage', 10), async (req, re
 
       const { userid, usergroup } = userResult.rows[0];
 
-      // Determine propertyStatus based on usergroup
-      const propertystatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
+      // Determine propertyStatus based on userGroup
+      const propertyStatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
 
       // Convert images to base64 and concatenate them
       const base64Images = req.files.map(file => file.buffer.toString('base64'));
@@ -653,27 +653,27 @@ app.post('/propertiesListing', upload.array('propertyimage', 10), async (req, re
           `INSERT INTO rate (rateamount, ratetype, period)
            VALUES ($1, $2, $3)
            RETURNING rateid`,
-          [propertyprice, "DefaultType", "DefaultPeriod"]
+          [propertyPrice, "DefaultType", "DefaultPeriod"]
       );
-      const rateid = rateResult.rows[0].rateid;
+      const rateID = rateResult.rows[0].rateid;
 
       // Insert category
       const categoryResult = await client.query(
           `INSERT INTO categories (categoryname, availablestates)
            VALUES ($1, $2)
            RETURNING categoryid`,
-          [categoryname, "DefaultStates"]
+          [categoryName, "DefaultStates"]
       );
-      const categoryid = categoryResult.rows[0].categoryid;
+      const categoryID = categoryResult.rows[0].categoryid;
 
       // Insert cluster
       const clusterResult = await client.query(
           `INSERT INTO clusters (clustername, clusterstate, clusterprovince)
            VALUES ($1, $2, $3)
            RETURNING clusterid`,
-          [clustername, "DefaultState", "DefaultProvince"]
+          [clusterName, "DefaultState", "DefaultProvince"]
       );
-      const clusterid = clusterResult.rows[0].clusterid;
+      const clusterID = clusterResult.rows[0].clusterid;
     
       // Insert property
       const propertyListingResult = await client.query(
@@ -686,19 +686,19 @@ app.post('/propertiesListing', upload.array('propertyimage', 10), async (req, re
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           RETURNING propertyid`,
           [
-              "1", userid, clusterid, categoryid, rateid,
-              propertydescription, propertyaddress,
-              propertybedtype, "1", propertyguestpaxno, concatenatedImages,
-              propertystatus, nearbylocation, facilities, "policies"
+              "1", userid, clusterID, categoryID, rateID,
+              propertyDescription, propertyAddress,
+              propertyBedType, "1", propertyGuestPaxNo, concatenatedImages,
+              propertyStatus, nearbyLocation, facilities, "policies"
           ]
       );
 
-      const propertyid = propertyListingResult.rows[0].propertyid;
+      const propertyID = propertyListingResult.rows[0].propertyid;
       
       // 提交事务
       await client.query('COMMIT');
 
-      res.status(201).json({ message: 'Property created successfully', propertyid });
+      res.status(201).json({ message: 'Property created successfully', propertyID });
   } catch (err) {
       // 回滚事务
       if (client) {
