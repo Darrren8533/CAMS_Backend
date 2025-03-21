@@ -191,9 +191,9 @@ app.post('/login', async (req, res) => {
       res.status(200).json({
         message: 'Login Successful',
         success: true,
-        userID: userid, 
-        userGroup: usergroup,
-        uActivation: uactivation 
+        userid: userid, 
+        usergroup: usergroup,
+        uactivation: uactivation 
       });
     } else {
       res.status(401).json({ message: 'Invalid username or password', success: false });
