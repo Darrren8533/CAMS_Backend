@@ -346,7 +346,9 @@ app.get('/users/owners', async (req, res) => {
     console.error("Error fetching owners:", err);
     res.status(500).json({ message: "Server error", success: false });
   } finally {
-    if (client) client.release();
+    if (client) {
+      client.release();
+    }
   }
 });
 
@@ -388,7 +390,9 @@ app.get('/users/operators', async (req, res) => {
     console.error("Error fetching operators:", err);
     res.status(500).json({ message: "Server error", success: false });
   } finally {
-    if (client) client.release();
+    if (client) {
+      client.release();
+    }
   }
 });
 
