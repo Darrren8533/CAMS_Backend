@@ -293,7 +293,7 @@ app.post('/logout', async (req, res) => {
     
     // 更新用户状态为已登出
     const query = {
-      text: "UPDATE Users SET uStatus = 'logout' WHERE userID = $1",
+      text: `UPDATE "Users" SET "uStatus" = 'logout' WHERE "userID" = $1`,
       values: [userID]
     };
     
