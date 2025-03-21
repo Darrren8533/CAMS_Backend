@@ -316,7 +316,7 @@ app.get('/users/customers', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, ufirstname", ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
       FROM users
       WHERE usergroup = 'Customer'
     `);
