@@ -316,9 +316,9 @@ app.get('/users/customers', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
-      FROM users
-      WHERE usergroup = 'Customer'
+      SELECT userID, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uActivation, uGender, uTitle
+      FROM Users
+      WHERE userGroup = 'Customer'
     `);
     res.json(result.rows);
   } catch (err) {
@@ -337,9 +337,9 @@ app.get('/users/owners', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
-      FROM users
-      WHERE usergroup = 'Owner'
+      SELECT userID, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uActivation, uGender, uTitle
+      FROM Users
+      WHERE userGroup = 'Owner'
     `);
     res.json(result.rows);
   } catch (err) {
@@ -360,9 +360,9 @@ app.get('/users/moderators', async (req, res) => {
 
     // Query to fetch moderators
     const result = await client.query(`
-      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
-      FROM users
-      WHERE usergroup = 'Moderator'
+      SELECT userID, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uActivation, uGender, uTitle
+      FROM Users
+      WHERE userGroup = 'Moderator'
     `);
     res.json(result.rows);
   } catch (err) {
@@ -381,9 +381,9 @@ app.get('/users/operators', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ugender, ucountry, uzipcode, utitle
-      FROM users
-      WHERE usergroup IN ('Moderator', 'Administrator')
+      SELECT userID, username, uFirstName, uLastName, uEmail, uPhoneNo, userGroup, uActivation, uGender, uCountry, uZipCode, uTitle
+      FROM Users
+      WHERE userGroup IN ('Moderator', 'Administrator')
     `);
     res.json(result.rows);
   } catch (err) {
@@ -402,9 +402,9 @@ app.get('/users/administrators', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
-      FROM users
-      WHERE usergroup = 'Administrator'
+      SELECT userID, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uActivation, uGender, uTitle
+      FROM Users
+      WHERE userGroup = 'Administrator'
     `);
     res.json(result.rows);
   } catch (err) {
