@@ -293,7 +293,7 @@ app.post('/logout', async (req, res) => {
     
     // 更新用户状态为已登出
     const query = {
-      text: "UPDATE users SET ustatus = 'logout' WHERE userid = $1",
+      text: "UPDATE "Users" SET "uStatus" = 'logout' WHERE "userID" = $1",
       values: [userID]
     };
     
@@ -316,9 +316,9 @@ app.get('/users/customers', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userID, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uActivation, uGender, uTitle
-      FROM Users
-      WHERE userGroup = 'Customer'
+      SELECT "userID", "uFirstName", "uLastName", "uEmail", "uPhoneNo", "uCountry", "uZipCode", "uActivation", "uGender", "uTitle"
+      FROM "Users"
+      WHERE "userGroup" = 'Customer'
     `);
     res.json(result.rows);
   } catch (err) {
