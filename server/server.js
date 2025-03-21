@@ -178,7 +178,7 @@ app.post('/login', async (req, res) => {
     );
 
     if (result.rows.length > 0) {
-      const { userID, userGroup, uActivation } = result.rows[0];
+      const { userid, usergroup, uactivation } = result.rows[0];
 
       // 更新用户状态
       await client.query(
