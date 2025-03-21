@@ -975,7 +975,8 @@ app.patch('/updatePropertyStatus/:propertyID', async (req, res) => {
   const { propertystatus } = req.body;
 
   try {
-    await pool.query(
+    client = await pool.connect();
+    await client.query(
       'UPDATE "properties" SET "propertystatus" = $1 WHERE "propertyid" = $2',
       [propertyStatus, propertyID]
     );
@@ -984,6 +985,10 @@ app.patch('/updatePropertyStatus/:propertyID', async (req, res) => {
   } catch (error) {
     console.error('Error updating property status:', error);
     res.status(500).json({ message: 'Internal Server Error' });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
