@@ -971,21 +971,27 @@ app.put('/propertiesListing/:propertyID', upload.array('propertyImage', 10), asy
 
 // Update property status
 app.patch('/updatePropertyStatus/:propertyID', async (req, res) => {
-  const { propertyID } = req.params;
-  const { propertyStatus } = req.body;
+  const { propertyid } = req.params;
+  const { propertystatus } = req.body;
 
   try {
-    await pool.request()
-      .input('propertyStatus', sql.VarChar, propertyStatus)
-      .input('propertyID', sql.Int, propertyID)
-      .query(`UPDATE Properties SET propertyStatus = @propertyStatus WHERE propertyID = @propertyID`);
+    client = await pool.connect();
+    await client.query(
+      'UPDATE "properties" SET "propertystatus" = $1 WHERE "propertyid" = $2',
+      [propertystatus, propertyid]
+    );
 
     res.status(200).json({ message: 'Property status updated successfully' });
   } catch (error) {
     console.error('Error updating property status:', error);
     res.status(500).json({ message: 'Internal Server Error' });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
+
 
 // Delete a property by propertyID
 app.delete('/propertiesListing/:propertyID', async (req, res) => {
