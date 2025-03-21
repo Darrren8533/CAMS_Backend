@@ -337,14 +337,14 @@ app.get('/users/owners', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, ugender, usergroup, utitle
+      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
       FROM users
       WHERE usergroup = 'Owner'
     `);
     res.json(result.rows);
   } catch (err) {
-    console.error("Error fetching owners:", err);
-    res.status(500).json({ message: "Server error", success: false });
+    console.error('Error fetching owners:', err);
+    res.status(500).json({ message: 'Server error', success: false });
   } finally {
     if (client) {
       client.release();
