@@ -170,30 +170,30 @@ app.post('/login', async (req, res) => {
     
     // 使用 PostgreSQL 语法
     const result = await client.query(
-      `SELECT userID, userGroup, uActivation 
+      `SELECT userID, "userGroup", "uActivation" 
        FROM "Users" 
-       WHERE (username = $1 OR uEmail = $1) 
+       WHERE (username = $1 OR "uEmail" = $1) 
        AND password = $2`,
       [username, password]
     );
 
     if (result.rows.length > 0) {
-      const { userID, userGroup, uActivation } = result.rows[0];
+      const { userID, "userGroup", "uActivation" } = result.rows[0];
 
       // 更新用户状态
       await client.query(
         `UPDATE "Users" 
-         SET uStatus = 'login' 
-         WHERE username = $1 OR uEmail = $1`,
+         SET "uStatus" = 'login' 
+         WHERE username = $1 OR "uEmail" = $1`,
         [username]
       );
 
       res.status(200).json({
         message: 'Login Successful',
         success: true,
-        userID: userID, 
-        userGroup: userGroup,
-        uActivation: uActivation 
+        userID: "userID", 
+        userGroup: "userGroup",
+        uActivation: "uActivation" 
       });
     } else {
       res.status(401).json({ message: 'Invalid username or password', success: false });
