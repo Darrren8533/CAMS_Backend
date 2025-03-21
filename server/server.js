@@ -604,17 +604,17 @@ app.put('/users/activateuser/:userid', async (req, res) => {
   }
 });
 
-app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, res) => {
+app.post('/propertiesListing', upload.array('propertyimage', 10), async (req, res) => {
   const {
       username,
-      propertyPrice,
-      propertyAddress,
-      clusterName,
-      categoryName,
-      propertyBedType,
-      propertyGuestPaxNo,
-      propertyDescription,
-      nearbyLocation,
+      propertyprice,
+      propertyaddress,
+      clustername,
+      categoryname,
+      propertybedtype,
+      propertyguestpaxo,
+      propertydescription,
+      nearbylocation,
       facilities
   } = req.body;
 
@@ -642,7 +642,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       const { userid, usergroup } = userResult.rows[0];
 
       // Determine propertyStatus based on usergroup
-      const propertyStatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
+      const propertystatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
 
       // Convert images to base64 and concatenate them
       const base64Images = req.files.map(file => file.buffer.toString('base64'));
@@ -653,7 +653,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           `INSERT INTO rate (rateamount, ratetype, period)
            VALUES ($1, $2, $3)
            RETURNING rateid`,
-          [propertyPrice, "DefaultType", "DefaultPeriod"]
+          [propertyprice, "DefaultType", "DefaultPeriod"]
       );
       const rateID = rateResult.rows[0].rateid;
 
@@ -662,18 +662,18 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           `INSERT INTO categories (categoryname, availablestates)
            VALUES ($1, $2)
            RETURNING categoryid`,
-          [categoryName, "DefaultStates"]
+          [categoryname, "DefaultStates"]
       );
-      const categoryID = categoryResult.rows[0].categoryid;
+      const categoryid = categoryResult.rows[0].categoryid;
 
       // Insert cluster
       const clusterResult = await client.query(
           `INSERT INTO clusters (clustername, clusterstate, clusterprovince)
            VALUES ($1, $2, $3)
            RETURNING clusterid`,
-          [clusterName, "DefaultState", "DefaultProvince"]
+          [clustername, "DefaultState", "DefaultProvince"]
       );
-      const clusterID = clusterResult.rows[0].clusterid;
+      const clusterid = clusterResult.rows[0].clusterid;
     
       // Insert property
       const propertyListingResult = await client.query(
@@ -686,19 +686,19 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           RETURNING propertyid`,
           [
-              "1", userid, clusterID, categoryID, rateID,
-              propertyDescription, propertyAddress,
-              propertyBedType, "1", propertyGuestPaxNo, concatenatedImages,
-              propertyStatus, nearbyLocation, facilities, "policies"
+              "1", userid, clusterid, categoryid, rateid,
+              propertydescription, propertyaddress,
+              propertybedtype, "1", propertyguestpaxno, concatenatedImages,
+              propertystatus, nearbylocation, facilities, "policies"
           ]
       );
 
-      const propertyID = propertyListingResult.rows[0].propertyid;
+      const propertyid = propertyListingResult.rows[0].propertyid;
       
       // 提交事务
       await client.query('COMMIT');
 
-      res.status(201).json({ message: 'Property created successfully', propertyID });
+      res.status(201).json({ message: 'Property created successfully', propertyid });
   } catch (err) {
       // 回滚事务
       if (client) {
