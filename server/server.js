@@ -453,45 +453,40 @@ app.post('/users/createModerator', async (req, res) => {
   }
 });
 
-
 // Update users by user ID
 app.put('/users/updateUser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { firstName, lastName, username, email, phoneNo, country, zipCode } = req.body;
 
   try {
-      // Update user details 
-      await pool.request()
-          .input('userid', sql.Int, userid)
-          .input('firstName', sql.VarChar, firstName)
-          .input('lastName', sql.VarChar, lastName)
-          .input('username', sql.VarChar, username)
-          .input('email', sql.VarChar, email)
-          .input('phoneNo', sql.BigInt, phoneNo)
-          .input('country', sql.VarChar, country)
-          .input('zipCode', sql.Int, zipCode)
-          .query(`
-              UPDATE users
-              SET ufirstname = @firstName, 
-                  ulastname = @lastName, 
-                  username = @username, 
-                  uemail = @email,
-                  uphoneno = @phoneNo,
-                  ucountry = @country,
-                  uzipcode = @zipCode
-              WHERE userid = @userid
-          `);
-          console.log(`
-    UPDATE users
-    SET ufirstname = '${firstName}', 
-        ulastname = '${lastName}', 
-        username = '${username}', 
-        uemail = '${email}',
-        uphoneno = '${phoneNo}',
-        ucountry = '${country}',
-        uzipcode = '${zipCode}'
-    WHERE userid = '${userid}'
-`);
+      // 使用参数化查询更新用户信息
+      const query = `
+          UPDATE users
+          SET ufirstname = $1, 
+              ulastname = $2, 
+              username = $3, 
+              uemail = $4,
+              uphoneno = $5,
+              ucountry = $6,
+              uzipcode = $7
+          WHERE userid = $8
+      `;
+
+      const values = [firstName, lastName, username, email, phoneNo, country, zipCode, userid];
+
+      await pool.query(query, values);
+
+      console.log(`
+      UPDATE users
+      SET ufirstname = '${firstName}', 
+          ulastname = '${lastName}', 
+          username = '${username}', 
+          uemail = '${email}',
+          uphoneno = '${phoneNo}',
+          ucountry = '${country}',
+          uzipcode = '${zipCode}'
+      WHERE userid = '${userid}'
+      `);
 
       res.status(200).json({ message: 'User updated successfully' });
   } catch (err) {
@@ -499,6 +494,7 @@ app.put('/users/updateUser/:userid', async (req, res) => {
       res.status(500).json({ error: 'Internal Server Error', details: err.message });
   }
 });
+
 
 // Remove users by user ID
 app.delete('/users/removeUser/:userid', async (req, res) => {
