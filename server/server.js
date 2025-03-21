@@ -971,14 +971,14 @@ app.put('/propertiesListing/:propertyID', upload.array('propertyImage', 10), asy
 
 // Update property status
 app.patch('/updatePropertyStatus/:propertyID', async (req, res) => {
-  const { propertyID } = req.params;
-  const { propertyStatus } = req.body;
+  const { propertyid } = req.params;
+  const { propertystatus } = req.body;
 
   try {
-    await pool.request()
-      .input('propertyStatus', sql.VarChar, propertyStatus)
-      .input('propertyID', sql.Int, propertyID)
-      .query(`UPDATE Properties SET propertyStatus = @propertyStatus WHERE propertyID = @propertyID`);
+    await pool.query(
+      'UPDATE "properties" SET "propertystatus" = $1 WHERE "propertyid" = $2',
+      [propertyStatus, propertyID]
+    );
 
     res.status(200).json({ message: 'Property status updated successfully' });
   } catch (error) {
