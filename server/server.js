@@ -107,8 +107,8 @@ app.post('/register', async (req, res) => {
     // 检查用户名或邮箱是否已存在
     const checkUserQuery = {
       text: `
-        SELECT username, "uEmail" FROM "Users"
-        WHERE username = $1 OR "uEmail" = $2
+        SELECT username, uemail FROM users
+        WHERE username = $1 OR uemail = $2
       `,
       values: [username, email]
     };
@@ -125,9 +125,9 @@ app.post('/register', async (req, res) => {
     // 插入新用户
     const insertUserQuery = {
       text: `
-        INSERT INTO "Users" (
-          username, password, "uEmail", "uTitle", "userGroup", "uStatus", "uActivation", "uImage",
-          "uFirstName", "uLastName"
+        INSERT INTO users (
+          username, password, uemail, utitle, usergroup, ustatus, uactivation, uimage,
+          ufirstname, ulastname
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
@@ -170,9 +170,9 @@ app.post('/login', async (req, res) => {
     
     // 使用 PostgreSQL 语法
     const result = await client.query(
-      `SELECT "userID", "userGroup", "uActivation" 
-       FROM "Users" 
-       WHERE (username = $1 OR "uEmail" = $1) 
+      `SELECT userid, usergroup, uactivation 
+       FROM users 
+       WHERE (username = $1 OR uemail = $1) 
        AND password = $2`,
       [username, password]
     );
@@ -182,18 +182,18 @@ app.post('/login', async (req, res) => {
 
       // 更新用户状态
       await client.query(
-        `UPDATE "Users" 
-         SET "uStatus" = 'login' 
-         WHERE username = $1 OR "uEmail" = $1`,
+        `UPDATE users
+         SET ustatus = 'login' 
+         WHERE username = $1 OR uemail = $1`,
         [username]
       );
 
       res.status(200).json({
         message: 'Login Successful',
         success: true,
-        userID: userID, 
-        userGroup: userGroup,
-        uActivation: uActivation 
+        userID: userid, 
+        userGroup: usergroup,
+        uActivation: uactivation 
       });
     } else {
       res.status(401).json({ message: 'Invalid username or password', success: false });
@@ -293,7 +293,7 @@ app.post('/logout', async (req, res) => {
     
     // 更新用户状态为已登出
     const query = {
-      text: `UPDATE "Users" SET "uStatus" = 'logout' WHERE "userID" = $1`,
+      text: `UPDATE users SET ustatus = 'logout' WHERE userid = $1`,
       values: [userID]
     };
     
@@ -316,9 +316,9 @@ app.get('/users/customers', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT "userID", "uFirstName", "uLastName", "uEmail", "uPhoneNo", "uCountry", "uZipCode", "uActivation", "uGender", "uTitle"
-      FROM "Users"
-      WHERE "userGroup" = 'Customer'
+      SELECT userid, ufirstname", ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      FROM users
+      WHERE usergroup = 'Customer'
     `);
     res.json(result.rows);
   } catch (err) {
