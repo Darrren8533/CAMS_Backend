@@ -191,9 +191,9 @@ app.post('/login', async (req, res) => {
       res.status(200).json({
         message: 'Login Successful',
         success: true,
-        userID: userid, 
-        userGroup: usergroup,
-        uActivation: uactivation 
+        userid: userid, 
+        usergroup: usergroup,
+        uactivation: uactivation 
       });
     } else {
       res.status(401).json({ message: 'Invalid username or password', success: false });
@@ -246,9 +246,9 @@ app.post("/google-login", async (req, res) => {
         return res.status(200).json({
           success: true,
           message: "Google Login Successful",
-          userID: userid,
-          userGroup: usergroup,
-          uActivation: uactivation,
+          userid: userid,
+          usergroup: usergroup,
+          uactivation: uactivation,
           username,
         });
       } else {
@@ -263,14 +263,14 @@ app.post("/google-login", async (req, res) => {
           [email, given_name || null, family_name || null, picture || null, username]
         );
 
-        const newUserID = insertResult.rows[0].userid;
+        const newuserid = insertResult.rows[0].userid;
 
         return res.status(201).json({
           success: true,
           message: "Google Login Successful, new user created",
-          userID: newUserID,
-          userGroup: "Customer",
-          uActivation: "Active",
+          userid: newuserid,
+          usergroup: "Customer",
+          uactivation: "Active",
           username,
         });
       }
@@ -285,7 +285,7 @@ app.post("/google-login", async (req, res) => {
 
 // 用户退出登录端点
 app.post('/logout', async (req, res) => {
-  const { userID } = req.body;
+  const { userid } = req.body;
   let client;
 
   try {
@@ -294,7 +294,7 @@ app.post('/logout', async (req, res) => {
     // 更新用户状态为已登出
     const query = {
       text: `UPDATE users SET ustatus = 'logout' WHERE userid = $1`,
-      values: [userID]
+      values: [userid]
     };
     
     await client.query(query);
@@ -337,9 +337,9 @@ app.get('/users/owners', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userID, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uActivation, uGender, uTitle
-      FROM Users
-      WHERE userGroup = 'Owner'
+      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      FROM users
+      WHERE usergroup = 'Owner'
     `);
     res.json(result.rows);
   } catch (err) {
@@ -360,9 +360,9 @@ app.get('/users/moderators', async (req, res) => {
 
     // Query to fetch moderators
     const result = await client.query(`
-      SELECT userID, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uActivation, uGender, uTitle
-      FROM Users
-      WHERE userGroup = 'Moderator'
+      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      FROM users
+      WHERE usergroup = 'Moderator'
     `);
     res.json(result.rows);
   } catch (err) {
@@ -381,9 +381,9 @@ app.get('/users/operators', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userID, username, uFirstName, uLastName, uEmail, uPhoneNo, userGroup, uActivation, uGender, uCountry, uZipCode, uTitle
-      FROM Users
-      WHERE userGroup IN ('Moderator', 'Administrator')
+      SELECT userid, username, ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ugender, ucountry, uzipcode, utitle
+      FROM users
+      WHERE usergroup IN ('Moderator', 'Administrator')
     `);
     res.json(result.rows);
   } catch (err) {
@@ -402,9 +402,9 @@ app.get('/users/administrators', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userID, uFirstName, uLastName, uEmail, uPhoneNo, uCountry, uZipCode, uActivation, uGender, uTitle
-      FROM Users
-      WHERE userGroup = 'Administrator'
+      SELECT userid, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      FROM users
+      WHERE usergroup = 'Administrator'
     `);
     res.json(result.rows);
   } catch (err) {
@@ -455,14 +455,14 @@ app.post('/users/createModerator', async (req, res) => {
 
 
 // Update users by user ID
-app.put('/users/updateUser/:userID', async (req, res) => {
-  const { userID } = req.params;
+app.put('/users/updateUser/:userid', async (req, res) => {
+  const { userid } = req.params;
   const { firstName, lastName, username, email, phoneNo, country, zipCode } = req.body;
 
   try {
       // Update user details 
       await pool.request()
-          .input('userID', sql.Int, userID)
+          .input('userid', sql.Int, userid)
           .input('firstName', sql.VarChar, firstName)
           .input('lastName', sql.VarChar, lastName)
           .input('username', sql.VarChar, username)
@@ -471,26 +471,26 @@ app.put('/users/updateUser/:userID', async (req, res) => {
           .input('country', sql.VarChar, country)
           .input('zipCode', sql.Int, zipCode)
           .query(`
-              UPDATE Users
-              SET uFirstName = @firstName, 
-                  uLastName = @lastName, 
+              UPDATE users
+              SET ufirstname = @firstName, 
+                  ulastname = @lastName, 
                   username = @username, 
-                  uEmail = @email,
-                  uPhoneNo = @phoneNo,
-                  uCountry = @country,
-                  uZipCode = @zipCode
-              WHERE userID = @userID
+                  uemail = @email,
+                  uphoneno = @phoneNo,
+                  ucountry = @country,
+                  uzipcode = @zipCode
+              WHERE userid = @userid
           `);
           console.log(`
-    UPDATE Users
-    SET uFirstName = '${firstName}', 
-        uLastName = '${lastName}', 
+    UPDATE users
+    SET ufirstname = '${firstName}', 
+        ulastname = '${lastName}', 
         username = '${username}', 
-        uEmail = '${email}',
-        uPhoneNo = '${phoneNo}',
-        uCountry = '${country}',
-        uZipCode = '${zipCode}'
-    WHERE userID = '${userID}'
+        uemail = '${email}',
+        uphoneno = '${phoneNo}',
+        ucountry = '${country}',
+        uzipcode = '${zipCode}'
+    WHERE userid = '${userid}'
 `);
 
       res.status(200).json({ message: 'User updated successfully' });
@@ -501,24 +501,24 @@ app.put('/users/updateUser/:userID', async (req, res) => {
 });
 
 // Remove users by user ID
-app.delete('/users/removeUser/:userID', async (req, res) => {
-  const { userID } = req.params;
+app.delete('/users/removeUser/:userid', async (req, res) => {
+  const { userid } = req.params;
 
   try {
     // Check if the user exists
     const userCheck = await pool.request()
-    .input('userID', sql.Int, userID)
-    .query('SELECT userID FROM Users WHERE userID = @userID');
+    .input('userid', sql.Int, userid)
+    .query('SELECT userid FROM users WHERE userid = @userid');
     
     if (userCheck.recordset.length === 0) {
       return res.status(404).json({ message: 'User not found', success: false });
     }
 
     await pool.request()
-      .input('userID', sql.Int, userID)
+      .input('userid', sql.Int, userid)
       .query(`
-        DELETE FROM Users
-        WHERE userID = @userID
+        DELETE FROM users
+        WHERE userid = @userid
       `);
 
     res.status(200).json({ message: 'User removed successfully' });
@@ -633,7 +633,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       // 开始事务
       await client.query('BEGIN');
 
-      // Fetch user ID and userGroup for property owner
+      // Fetch user ID and usergroup for property owner
       const userResult = await client.query(
           'SELECT userid, usergroup FROM users WHERE username = $1',
           [username]
@@ -645,7 +645,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
 
       const { userid, usergroup } = userResult.rows[0];
 
-      // Determine propertyStatus based on userGroup
+      // Determine propertyStatus based on usergroup
       const propertyStatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
 
       // Convert images to base64 and concatenate them
@@ -1023,13 +1023,13 @@ app.delete('/propertiesListing/:propertyID', async (req, res) => {
   }
 });
 
-// Check user status by userID
+// Check user status by userid
 app.get('/checkStatus', async(req, res) => {
   const { userid } = req.query;
   let client;
 
-  // 打印接收到的userID参数
-  console.log('Received userID parameter:', userid);
+  // 打印接收到的userid参数
+  console.log('Received userid parameter:', userid);
   console.log('Full query parameters:', req.query);
 
   try {
@@ -1113,13 +1113,13 @@ app.post('/requestBooking/:reservationID', async (req, res) => {
   try {
     const result = await pool.request()
       .input('reservationID', sql.Int, reservationID)
-      .query(`SELECT rc.rcLastName, rc.rcTitle, r.checkInDateTime, r.checkOutDateTime, r.request, r.totalPrice, p.propertyAddress, u.uEmail FROM Reservation_Customer_Details rc JOIN Reservation r ON rc.rcID = r.rcID JOIN Properties p ON r.propertyID = p.propertyID JOIN Users u ON u.userID = p.userID WHERE reservationID = @reservationID`);
+      .query(`SELECT rc.rcLastName, rc.rcTitle, r.checkInDateTime, r.checkOutDateTime, r.request, r.totalPrice, p.propertyAddress, u.uemail FROM Reservation_Customer_Details rc JOIN Reservation r ON rc.rcID = r.rcID JOIN Properties p ON r.propertyID = p.propertyID JOIN users u ON u.userid = p.userid WHERE reservationID = @reservationID`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Reservation or user not found for this property' });
     }
 
-    const { rcLastName: customerLastName, rcTitle: customerTitle, checkInDateTime: reservationCheckInDateTime, checkOutDateTime: reservationCheckOutDateTime, request: reservationRequest = '-', totalPrice: reservationTotalPrice, propertyAddress: reservationProperty, uEmail: userEmail } = result.recordset[0];
+    const { rcLastName: customerLastName, rcTitle: customerTitle, checkInDateTime: reservationCheckInDateTime, checkOutDateTime: reservationCheckOutDateTime, request: reservationRequest = '-', totalPrice: reservationTotalPrice, propertyAddress: reservationProperty, uemail: userEmail } = result.recordset[0];
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1340,13 +1340,13 @@ app.post('/propertyListingAccept/:propertyID', async (req, res) => {
   try {
     const result = await pool.request()
       .input('propertyID', sql.Int, propertyID)
-      .query(`SELECT p.propertyAddress, u.uLastName, u.uEmail, u.uTitle FROM Property p JOIN Users u ON u.userID = p.userID WHERE p.propertyID = @propertyID`);
+      .query(`SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle FROM Property p JOIN users u ON u.userid = p.userid WHERE p.propertyID = @propertyID`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Property or user not found for this reservation' });
     }
 
-    const { propertyAddress: property, uLastName: moderatorLastName, uEmail: moderatorEmail, uTitle: moderatorTitle } = result.recordset[0];
+    const { propertyAddress: property, ulastname: moderatorLastName, uemail: moderatorEmail, utitle: moderatorTitle } = result.recordset[0];
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1383,13 +1383,13 @@ app.post('/propertyListingReject/:propertyID', async (req, res) => {
   try {
     const result = await pool.request()
       .input('propertyID', sql.Int, propertyID)
-      .query(`SELECT p.propertyAddress, u.uLastName, u.uEmail, u.uTitle FROM Property p JOIN Users u ON u.userID = p.userID WHERE p.propertyID = @propertyID`);
+      .query(`SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle FROM Property p JOIN users u ON u.userid = p.userid WHERE p.propertyID = @propertyID`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Property or user not found for this reservation' });
     }
 
-    const { propertyAddress: property, uLastName: moderatorLastName, uEmail: moderatorEmail, uTitle: moderatorTitle } = result.recordset[0];
+    const { propertyAddress: property, ulastname: moderatorLastName, uemail: moderatorEmail, utitle: moderatorTitle } = result.recordset[0];
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1421,21 +1421,21 @@ app.post('/propertyListingReject/:propertyID', async (req, res) => {
 
 // Send "Suggest" Notification To Operators
 app.post('/sendSuggestNotification/:reservationID', async (req, res) => {
-  const { userIDs } = req.body;
+  const { userids } = req.body;
   const { reservationID } = req.params;
 
   try {
     const result = await pool.query(`
       SELECT * 
-      FROM Users 
-      WHERE userID IN (${userIDs.join(', ')})
+      FROM users 
+      WHERE userid IN (${userids.join(', ')})
     `);
 
     if(result.recordset.length === 0) {
       return res.status(404).json({ message: 'No users found' });
     }
 
-    const selectedEmails = result.recordset.map(record => record.uEmail);
+    const selectedEmails = result.recordset.map(record => record.uemail);
 
     const reservationResult = await pool.request()
       .input('reservationID', sql.Int, reservationID)
@@ -1481,11 +1481,11 @@ app.post('/sendSuggestNotification/:reservationID', async (req, res) => {
 })
 
 //Create reservation for property
-app.post('/reservation/:userID', async (req, res) => {
+app.post('/reservation/:userid', async (req, res) => {
   const { propertyID, checkInDateTime, checkOutDateTime, reservationBlockTime, request, totalPrice, adults, children, rcFirstName, rcLastName, rcEmail, rcPhoneNo, rcTitle } = req.body;
-  const userID = req.params.userID;
+  const userid = req.params.userid;
 
-  if (!userID) {
+  if (!userid) {
     return res.status(400).json({ error: 'User ID is required' });
   }
 
@@ -1518,11 +1518,11 @@ app.post('/reservation/:userID', async (req, res) => {
       .input('totalPrice', sql.Float, totalPrice)
       .input('rcID', sql.Int, rcID)
       .input('reservationStatus', sql.VarChar, 'Pending')
-      .input('userID', sql.Int, userID)
+      .input('userid', sql.Int, userid)
       .query(`
-        INSERT INTO Reservation (propertyID, checkInDateTime, checkOutDateTime, reservationBlockTime, request, totalPrice, rcID, reservationStatus, userID)
+        INSERT INTO Reservation (propertyID, checkInDateTime, checkOutDateTime, reservationBlockTime, request, totalPrice, rcID, reservationStatus, userid)
         OUTPUT inserted.reservationID
-        VALUES (@propertyID, @checkInDateTime, @checkOutDateTime, @reservationBlockTime, @request, @totalPrice, @rcID, @reservationStatus, @userID)
+        VALUES (@propertyID, @checkInDateTime, @checkOutDateTime, @reservationBlockTime, @request, @totalPrice, @rcID, @reservationStatus, @userid)
       `);
 
     const reservationID = reservationResult.recordset[0].reservationID;
@@ -1531,13 +1531,13 @@ app.post('/reservation/:userID', async (req, res) => {
     await pool.request()
       .input('timestamp', sql.DateTime, new Date())
       .input('action', sql.VarChar, `Booking created for reservationID ${reservationID} and propertyID ${propertyID}`)
-      .input('userID', sql.Int, userID)
-      .input('entityID', sql.Int, userID)
+      .input('userid', sql.Int, userid)
+      .input('entityID', sql.Int, userid)
       .input('actionType', sql.VarChar, `abc`)
       .input('entityType', sql.VarChar, `abc`)
       .query(`
-        INSERT INTO Audit_Trail (timestamp, action, userID, entityID, actionType, entityType)
-        VALUES (@timestamp, @action, @userID, @entityID, @actionType, @entityType)
+        INSERT INTO Audit_Trail (timestamp, action, userid, entityID, actionType, entityType)
+        VALUES (@timestamp, @action, @userid, @entityID, @actionType, @entityType)
       `);
 
     res.status(201).json({ message: 'Reservation and Audit Log created successfully', reservationID });
@@ -1552,7 +1552,7 @@ app.get('/users/booklog', async (req, res) => {
   try {
     const result = await pool.request().query(`
       SELECT 
-        a.userID, 
+        a.userid, 
         a.timestamp, 
         a.action,
         CASE 
@@ -1620,17 +1620,17 @@ app.get('/users/finance', async (req, res) => {
 
 // Fetch reservations for the logged-in user
 app.get('/cart', async (req, res) => {
-  const userID = req.query.userID;
+  const userid = req.query.userid;
 
-  if (!userID || isNaN(userID)) {
-    return res.status(400).json({ error: 'Invalid or missing userID' });
+  if (!userid || isNaN(userid)) {
+    return res.status(400).json({ error: 'Invalid or missing userid' });
   }
 
   try {
-    // Fetch reservations by userID from the database
+    // Fetch reservations by userid from the database
     const reservationResult = await pool
       .request()
-      .input('userID', sql.Int, userID)
+      .input('userid', sql.Int, userid)
       .query(`
         SELECT 
           r.reservationID,
@@ -1644,13 +1644,13 @@ app.get('/cart', async (req, res) => {
           r.totalPrice,
           r.reservationStatus,
           r.rcID,
-          r.userID
+          r.userid
         FROM 
           Reservation r
         JOIN 
           Properties p ON r.propertyID = p.propertyID
         WHERE 
-          r.userID = @userID
+          r.userid = @userid
       `);
 
     // Process the results to format property image if needed
@@ -1659,9 +1659,9 @@ app.get('/cart', async (req, res) => {
       propertyImage: reservation.propertyImage ? reservation.propertyImage.split(',') : []  // Assuming propertyImage is a comma-separated list
     }));
 
-    res.status(200).json({ userID, reservations });
+    res.status(200).json({ userid, reservations });
   } catch (err) {
-    console.error('Error fetching reservations by userID:', err);
+    console.error('Error fetching reservations by userid:', err);
     res.status(500).json({ error: 'Internal Server Error', details: err.message });
   }
 });
@@ -1675,13 +1675,13 @@ app.get('/reservationTable', async (req, res) => {
   }
 
   try {
-    // Fetch userID and userGroup from the Users table
+    // Fetch userid and usergroup from the users table
     const userResult = await pool
       .request()
       .input('username', sql.VarChar, username)
       .query(`
-        SELECT userID, userGroup 
-        FROM Users 
+        SELECT userid, usergroup 
+        FROM users 
         WHERE username = @username
       `);
 
@@ -1689,8 +1689,8 @@ app.get('/reservationTable', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const userID = userResult.recordset[0].userID;
-    const userGroup = userResult.recordset[0].userGroup;
+    const userid = userResult.recordset[0].userid;
+    const usergroup = userResult.recordset[0].usergroup;
 
     // Base query for fetching reservations
     let query = `
@@ -1699,7 +1699,7 @@ app.get('/reservationTable', async (req, res) => {
         r.propertyID,
         p.propertyAddress, 
         p.propertyImage,
-        p.userID,
+        p.userid,
         r.checkInDateTime,
         r.checkOutDateTime,
         r.reservationBlockTime,
@@ -1721,8 +1721,8 @@ app.get('/reservationTable', async (req, res) => {
     `;
 
     // Apply filter for moderators
-    if (userGroup === 'Moderator') {
-      query += ` WHERE p.userID = @userID AND r.reservationStatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')`;
+    if (usergroup === 'Moderator') {
+      query += ` WHERE p.userid = @userid AND r.reservationStatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')`;
     } else {
       query += ` WHERE r.reservationStatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')`;
     }
@@ -1730,7 +1730,7 @@ app.get('/reservationTable', async (req, res) => {
     // Execute the query
     const result = await pool
       .request()
-      .input('userID', sql.Int, userID)
+      .input('userid', sql.Int, userid)
       .query(query);
 
     // Process reservations to split propertyImage into an array
@@ -1803,17 +1803,17 @@ app.delete('/removeReservation/:reservationID', async (req, res) => {
 });
 
 // Get Properties Of Particular Administrator For "Suggest"
-app.get('/operatorProperties/:userID', async (req, res) => {
-  const { userID } = req.params;
+app.get('/operatorProperties/:userid', async (req, res) => {
+  const { userid } = req.params;
 
-  if (!userID) {
-    return res.status(400).json({ message: 'userID of Operator is not found' });
+  if (!userid) {
+    return res.status(400).json({ message: 'userid of Operator is not found' });
   }
 
   try {
     const result = await pool.request()
-      .input('userID', sql.Int, userID)
-      .query(`SELECT * FROM Property WHERE userID = @userID AND propertyStatus = 'Available'`);
+      .input('userid', sql.Int, userid)
+      .query(`SELECT * FROM Property WHERE userid = @userid AND propertyStatus = 'Available'`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'No properties found for this Operator' });
@@ -1832,10 +1832,10 @@ app.get('/operatorProperties/:userID', async (req, res) => {
 })
 
 // Get user information
-app.get('/getUserInfo/:userID', async (req, res) => {
-  const { userID } = req.params;
+app.get('/getUserInfo/:userid', async (req, res) => {
+  const { userid } = req.params;
   let client;
-  console.log(userID);
+  console.log(userid);
 
   try {
     client = await pool.connect();
@@ -1849,7 +1849,7 @@ app.get('/getUserInfo/:userID', async (req, res) => {
         "uphoneno"
       FROM "users"
       WHERE "userid" = $1`,
-      [userID] // 参数作为数组传递
+      [userid] // 参数作为数组传递
     );
 
     if (result.rows.length === 0) {
@@ -1870,23 +1870,23 @@ app.post('/forgot-password', async (req, res) => {
   try {
     const userResult = await pool.request()
       .input('email', sql.VarChar, email)
-      .query('SELECT userID, username FROM Users WHERE uEmail = @email');
+      .query('SELECT userid, username FROM users WHERE uemail = @email');
 
     if (userResult.recordset.length === 0) {
       return res.status(404).json({ message: 'Email not registered' });
     }
 
-    const { userID, username } = userResult.recordset[0];
+    const { userid, username } = userResult.recordset[0];
 
     const newPassword = Math.random().toString(36).slice(-8);
 
     await pool.request()
-      .input('userID', sql.Int, userID)
+      .input('userid', sql.Int, userid)
       .input('password', sql.VarChar, newPassword)
       .query(`
-        UPDATE Users 
+        UPDATE users 
         SET password = @password
-        WHERE userID = @userID
+        WHERE userid = @userid
       `);
 
     const transporter = nodemailer.createTransport({
@@ -1937,11 +1937,11 @@ const getDefaultAvatarBase64 = () => {
 const generateRandomSixDigits = () => Math.floor(100000 + Math.random() * 900000);
 
 // Get User Details
-app.get('/users/:userID', async (req, res) => {
-  const { userID } = req.params;
+app.get('/users/:userid', async (req, res) => {
+  const { userid } = req.params;
 
-  if (isNaN(userID)) {
-    return res.status(400).json({ message: "Invalid userID" });
+  if (isNaN(userid)) {
+    return res.status(400).json({ message: "Invalid userid" });
   }
 
   let client;
@@ -1950,7 +1950,7 @@ app.get('/users/:userID', async (req, res) => {
     
     const query = {
       text: "SELECT * FROM users WHERE userid = $1",
-      values: [userID]
+      values: [userid]
     };
     
     const result = await client.query(query);
@@ -1970,8 +1970,8 @@ app.get('/users/:userID', async (req, res) => {
   }
 });
 
-app.put('/users/updateProfile/:userID', async (req, res) => {
-  const { userID } = req.params;
+app.put('/users/updateProfile/:userid', async (req, res) => {
+  const { userid } = req.params;
   let client;
 
   // Skip validation and assume all fields are provided correctly
@@ -1980,20 +1980,20 @@ app.put('/users/updateProfile/:userID', async (req, res) => {
   try {
     client = await pool.connect();
     await client.query(
-      `UPDATE Users SET 
+      `UPDATE users SET 
         username = $1, 
         password = $2, 
-        uFirstName = $3, 
-        uLastName = $4, 
+        ufirstname = $3, 
+        ulastname = $4, 
         uDOB = $5,
-        uTitle = $6,
-        uGender = $7,
-        uEmail = $8, 
-        uPhoneNo = $9, 
-        uCountry = $10, 
-        uZipCode = $11
-      WHERE userID = $12`,
-      [username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userID]
+        utitle = $6,
+        ugender = $7,
+        uemail = $8, 
+        uphoneno = $9, 
+        ucountry = $10, 
+        uzipcode = $11
+      WHERE userid = $12`,
+      [username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userid]
     );
 
     res.status(200).json({ message: 'Profile updated successfully.', success: true });
