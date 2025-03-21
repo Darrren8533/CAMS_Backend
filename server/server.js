@@ -107,8 +107,8 @@ app.post('/register', async (req, res) => {
     // 检查用户名或邮箱是否已存在
     const checkUserQuery = {
       text: `
-        SELECT username, "uemail" FROM "users"
-        WHERE username = $1 OR "uemail" = $2
+        SELECT username, "uEmail" FROM "Users"
+        WHERE username = $1 OR "uEmail" = $2
       `,
       values: [username, email]
     };
@@ -126,8 +126,8 @@ app.post('/register', async (req, res) => {
     const insertUserQuery = {
       text: `
         INSERT INTO "users" (
-          username, password, "uemail", "utitle", "usergroup", "ustatus", "uactivation", "uimage",
-          "ufirstname", "ulastname"
+          username, password, "uEmail", "uTitle", "userGroup", "uStatus", "uActivation", "uImage",
+          "uFirstName", "uLastName"
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
