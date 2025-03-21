@@ -625,6 +625,8 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
   let client;
   try {
       client = await pool.connect();
+      
+      // 开始事务
       await client.query('BEGIN');
 
       // Fetch user ID and userGroup for property owner
@@ -655,46 +657,24 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       );
       const rateID = rateResult.rows[0].rateid;
 
-      // 先检查集群是否存在
-      let clusterID;
-      const existingCluster = await client.query(
-          'SELECT clusterid FROM clusters WHERE clustername = $1',
-          [clusterName]
+      // Insert category
+      const categoryResult = await client.query(
+          `INSERT INTO categories (categoryname, availablestates)
+           VALUES ($1, $2)
+           RETURNING categoryid`,
+          [categoryName, "DefaultStates"]
       );
-      
-      if (existingCluster.rows.length > 0) {
-          clusterID = existingCluster.rows[0].clusterid;
-      } else {
-          // 如果集群不存在，才创建新的
-          const clusterResult = await client.query(
-              `INSERT INTO clusters (clustername, clusterstate, clusterprovince)
-               VALUES ($1, $2, $3)
-               RETURNING clusterid`,
-              [clusterName, "DefaultState", "DefaultProvince"]
-          );
-          clusterID = clusterResult.rows[0].clusterid;
-      }
+      const categoryID = categoryResult.rows[0].categoryid;
 
-      // 同样检查类别是否存在
-      let categoryID;
-      const existingCategory = await client.query(
-          'SELECT categoryid FROM categories WHERE categoryname = $1',
-          [categoryName]
+      // Insert cluster
+      const clusterResult = await client.query(
+          `INSERT INTO clusters (clustername, clusterstate, clusterprovince)
+           VALUES ($1, $2, $3)
+           RETURNING clusterid`,
+          [clusterName, "DefaultState", "DefaultProvince"]
       );
-
-      if (existingCategory.rows.length > 0) {
-          categoryID = existingCategory.rows[0].categoryid;
-      } else {
-          // 如果类别不存在，才创建新的
-          const categoryResult = await client.query(
-              `INSERT INTO categories (categoryname, availablestates)
-               VALUES ($1, $2)
-               RETURNING categoryid`,
-              [categoryName, "DefaultStates"]
-          );
-          categoryID = categoryResult.rows[0].categoryid;
-      }
-
+      const clusterID = clusterResult.rows[0].clusterid;
+    
       // Insert property
       const propertyListingResult = await client.query(
           `INSERT INTO properties (
