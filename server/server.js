@@ -655,7 +655,7 @@ app.post('/propertiesListing', upload.array('propertyimage', 10), async (req, re
            RETURNING rateid`,
           [propertyprice, "DefaultType", "DefaultPeriod"]
       );
-      const rateID = rateResult.rows[0].rateid;
+      const rateid = rateResult.rows[0].rateid;
 
       // Insert category
       const categoryResult = await client.query(
