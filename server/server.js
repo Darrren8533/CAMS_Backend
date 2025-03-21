@@ -171,7 +171,7 @@ app.post('/login', async (req, res) => {
     // 使用 PostgreSQL 语法
     const result = await client.query(
       `SELECT userID, userGroup, uActivation 
-       FROM Users 
+       FROM "Users" 
        WHERE (username = $1 OR uEmail = $1) 
        AND password = $2`,
       [username, password]
@@ -182,7 +182,7 @@ app.post('/login', async (req, res) => {
 
       // 更新用户状态
       await client.query(
-        `UPDATE Users 
+        `UPDATE "Users" 
          SET uStatus = 'login' 
          WHERE username = $1 OR uEmail = $1`,
         [username]
