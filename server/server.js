@@ -1399,15 +1399,6 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
       `,
     };
 
-    // 创建邮件发送器配置
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy'  // 这是应用专用密码
-      }
-    });
-
     await transporter.sendMail(mailOptions);
     res.status(200).json({ message: "Email Sent Successfully" });
   } catch (err) {
@@ -1428,8 +1419,8 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(
-      `SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle 
-       FROM Property p 
+      `SELECT p.propertyaddress, u.ulastname, u.uemail, u.utitle 
+       FROM properties p  
        JOIN users u ON u.userid = p.userid 
        WHERE p.propertyid = $1`,
       [propertyid]
