@@ -833,7 +833,7 @@ app.get('/propertiesListingTable', async (req, res) => {
     let query;
 
     if (usergroup === 'Moderator') {
-      // If user is a Moderator, fetch properties created by that user only
+      // Moderator 只能看到自己的属性
       query = `
         SELECT 
           p.propertyid, 
@@ -858,7 +858,7 @@ app.get('/propertiesListingTable', async (req, res) => {
         WHERE p.userid = $1
       `;
     } else {
-      // 如果是管理员或其他角色，使用相同的查询
+      // Administrator 可以看到所有属性
       query = `
         SELECT 
           p.propertyid, 
@@ -880,11 +880,12 @@ app.get('/propertiesListingTable', async (req, res) => {
         JOIN rate r ON p.rateid = r.rateid
         JOIN clusters cl ON p.clusterid = cl.clusterid
         JOIN categories c ON p.categoryid = c.categoryid
-        WHERE p.userid = $1
-      `;
+      `; // 移除 WHERE 条件，这样管理员可以看到所有属性
     }
 
-    const result = await client.query(query, [userid]);
+    // 相应地修改查询参数
+    const params = usergroup === 'Moderator' ? [userid] : [];
+    const result = await client.query(query, params);
 
     const properties = result.rows.map(property => ({
       ...property,
