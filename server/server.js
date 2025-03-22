@@ -499,28 +499,35 @@ app.put('/users/updateUser/:userid', async (req, res) => {
 // Remove users by user ID
 app.delete('/users/removeUser/:userid', async (req, res) => {
   const { userid } = req.params;
-
+  let client;
+  
   try {
-    // Check if the user exists
-    const userCheck = await pool.request()
-    .input('userid', sql.Int, userid)
-    .query('SELECT userid FROM users WHERE userid = @userid');
+    client = await pool.connect();
     
-    if (userCheck.recordset.length === 0) {
+    // Check if the user exists
+    const userCheck = await client.query(
+      'SELECT userid FROM users WHERE userid = $1',
+      [userid]
+    );
+    
+    if (userCheck.rows.length === 0) {
       return res.status(404).json({ message: 'User not found', success: false });
     }
-
-    await pool.request()
-      .input('userid', sql.Int, userid)
-      .query(`
-        DELETE FROM users
-        WHERE userid = @userid
-      `);
-
+    
+    // Delete the user
+    await client.query(
+      'DELETE FROM users WHERE userid = $1',
+      [userid]
+    );
+    
     res.status(200).json({ message: 'User removed successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
