@@ -1365,33 +1365,31 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
   }
 });
 
-// Send Properties Listing Request Accepted Notification To Moderator
-app.post('/propertyListingAccept/:propertyid', async (req, res) => {
+// Send Property Listing Request Accepted Notification
+app.post("/propertyListingAccept/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
+  let client;
 
   try {
-    const result = await pool.request()
-      .input('propertyid', sql.Int, propertyid)
-      .query(`SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle FROM Property p JOIN users u ON u.userid = p.userid WHERE p.propertyid = @propertyid`);
+    client = await pool.connect();
+    const result = await client.query(
+      `SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle 
+       FROM Property p 
+       JOIN users u ON u.userid = p.userid 
+       WHERE p.propertyid = $1`,
+      [propertyid]
+    );
 
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ message: 'Property or user not found for this reservation' });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Property or user not found" });
     }
 
-    const { propertyAddress: property, ulastname: moderatorLastName, uemail: moderatorEmail, utitle: moderatorTitle } = result.recordset[0];
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
-      },
-    });
+    const { propertyaddress: property, ulastname: moderatorLastName, uemail: moderatorEmail, utitle: moderatorTitle } = result.rows[0];
 
     const mailOptions = {
-      from: 'laudarren911@gmail.com',
+      from: "laudarren911@gmail.com",
       to: moderatorEmail,
-      subject: 'Property Listing Request Accepted',
+      subject: "Property Listing Request Accepted",
       html: `
       <h1><b>Dear ${moderatorTitle} ${moderatorLastName},</b></h1><hr/>
       <p>Your request for property listing of property named <b>${property}</b> has been <span style="color: green">accepted</span> by the Administrator.</p>
@@ -1401,40 +1399,42 @@ app.post('/propertyListingAccept/:propertyid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Email Sent Successfully' })
+    res.status(200).json({ message: "Email Sent Successfully" });
   } catch (err) {
-    console.error('Error sending email: ', err);
-    res.status(500).json({ message: 'Failed to send email', error: err.message });
+    console.error("Error sending email:", err);
+    res.status(500).json({ message: "Failed to send email", error: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
-// Send Properties Listing Request Rejected Notification To Moderator
-app.post('/propertyListingReject/:propertyid', async (req, res) => {
+// Send Property Listing Request Rejected Notification
+app.post("/propertyListingReject/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
+  let client;
 
   try {
-    const result = await pool.request()
-      .input('propertyid', sql.Int, propertyid)
-      .query(`SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle FROM Property p JOIN users u ON u.userid = p.userid WHERE p.propertyid = @propertyid`);
+    client = await pool.connect();
+    const result = await client.query(
+      `SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle 
+       FROM Property p 
+       JOIN users u ON u.userid = p.userid 
+       WHERE p.propertyid = $1`,
+      [propertyid]
+    );
 
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ message: 'Property or user not found for this reservation' });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Property or user not found" });
     }
 
-    const { propertyAddress: property, ulastname: moderatorLastName, uemail: moderatorEmail, utitle: moderatorTitle } = result.recordset[0];
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
-      },
-    });
+    const { propertyaddress: property, ulastname: moderatorLastName, uemail: moderatorEmail, utitle: moderatorTitle } = result.rows[0];
 
     const mailOptions = {
-      from: 'laudarren911@gmail.com',
+      from: "laudarren911@gmail.com",
       to: moderatorEmail,
-      subject: 'Property Listing Request Rejected',
+      subject: "Property Listing Request Rejected",
       html: `
       <h1><b>Dear ${moderatorTitle} ${moderatorLastName},</b></h1><hr/>
       <p>Your request for property listing of property named <b>${property}</b> has been <span style="color: red">rejected</span> by the Administrator due to violation of policy.</p>
@@ -1444,10 +1444,14 @@ app.post('/propertyListingReject/:propertyid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Email Sent Successfully' })
+    res.status(200).json({ message: "Email Sent Successfully" });
   } catch (err) {
-    console.error('Error sending email: ', err);
-    res.status(500).json({ message: 'Failed to send email', error: err.message });
+    console.error("Error sending email:", err);
+    res.status(500).json({ message: "Failed to send email", error: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
