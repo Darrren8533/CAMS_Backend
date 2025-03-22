@@ -1374,8 +1374,8 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(
-      `SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle 
-       FROM Property p 
+      `SELECT p.propertyaddress, u.ulastname, u.uemail, u.utitle 
+       FROM properties p  // 修改这里：Property -> properties
        JOIN users u ON u.userid = p.userid 
        WHERE p.propertyid = $1`,
       [propertyid]
