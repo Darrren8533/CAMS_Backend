@@ -2068,19 +2068,19 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
 });
 
 // Upload user avatar
-app.post('/users/uploadavatar/:userid', async (req, res) => {
+app.post('/users/uploadAvatar/:userid', async (req, res) => {
   const { userid } = req.params;
-  const { uimage } = req.body;
+  const { uimage } = req.body; 
   let client;
 
   // Validate userid
   if (isNaN(userid)) {
-    console.error("Invalid userid:", userid);
+    console.error('Invalid userid:', userid);
     return res.status(400).json({ message: 'Invalid userid' });
   }
 
   if (!uimage) {
-    console.error("No image data received");
+    console.error('No image data received');
     return res.status(400).json({ message: 'No image data provided.' });
   }
 
@@ -2093,9 +2093,12 @@ app.post('/users/uploadavatar/:userid', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Update user avatar
+
     const result = await client.query(
-      `UPDATE users SET uimage = $1 WHERE userid = $2 RETURNING userid`,
+      `UPDATE users 
+       SET uimage = $1 
+       WHERE userid = $2 
+       RETURNING userid, uimage`,
       [uimage, userid]
     );
 
@@ -2103,10 +2106,11 @@ app.post('/users/uploadavatar/:userid', async (req, res) => {
       return res.status(500).json({ message: 'Failed to update user avatar' });
     }
 
-    console.log("Avatar uploaded successfully for user:", userid);
-    return res.status(200).json({ message: 'Avatar uploaded successfully' });
+    const updatedUser = result.rows[0];
+    console.log('Avatar uploaded successfully for user:', userid);
+    return res.status(200).json({success: true, message: 'Avatar uploaded successfully',data: updatedUser,});
   } catch (err) {
-    console.error("Error uploading avatar:", err.message);
+    console.error('Error uploading avatar:', err.message);
     return res.status(500).json({ message: `Error uploading avatar: ${err.message}` });
   } finally {
     if (client) {
