@@ -1105,37 +1105,42 @@ app.get('/checkStatus', async(req, res) => {
 });
 
 // Send contact us email
-app.post('/contact_us', async (req, res) => {
+app.post("/contact_us", async (req, res) => {
   const { name, email, message } = req.body;
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: 'wilson336933@gmail.com',
-      pass: 'nditynbfwuchdpgx',
-    },
-  });
-
-  const mailOptions = {
-    from: 'wilson336933@gmail.com',  
-    to: 'wilson336933@gmail.com',
-    subject: `Message from ${name}`,
-
-    html: `
-    <h1>New Message from ${name}</h1>
-    <p><strong>Message:</strong></p>
-    <p>${message}</p>
-    <p><strong>Email:</strong> ${email}</p>`,
-
-    replyTo: email, 
-  };
+  let client;
 
   try {
+    client = await pool.connect(); 
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "omg71933@gmail.com",
+        pass: "eyiwkkdsklngzzzj",
+      },
+    });
+
+    const mailOptions = {
+      from: "omg71933@gmail.com",
+      to: "omg71933@gmail.com",
+      subject: `Message from ${name}`,
+      html: `
+      <h1>New Message from ${name}</h1>
+      <p><strong>Message:</strong></p>
+      <p>${message}</p>
+      <p><strong>Email:</strong> ${email}</p>`,
+      replyTo: email,
+    };
+
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Email sent successfully' });
+    res.status(200).json({ message: "Email sent successfully" });
   } catch (error) {
-    console.error('Error sending email:', error.response);
-    res.status(500).json({ message: 'Failed to send email', error: error.response});
+    console.error("Error sending email:", error);
+    res.status(500).json({ message: "Failed to send email", error: error.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
