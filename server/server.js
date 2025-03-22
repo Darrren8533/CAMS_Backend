@@ -880,6 +880,7 @@ app.get('/propertiesListingTable', async (req, res) => {
         JOIN rate r ON p.rateid = r.rateid
         JOIN clusters cl ON p.clusterid = cl.clusterid
         JOIN categories c ON p.categoryid = c.categoryid
+        WHERE p.userid = $1
       `;
     }
 
