@@ -2021,40 +2021,19 @@ app.get('/users/:userid', async (req, res) => {
   }
 });
 
-// Update user profile data
+// Update user profile
 app.put('/users/updateProfile/:userid', async (req, res) => {
   const { userid } = req.params;
+  const { username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode } = req.body;
   let client;
-  
+
   try {
     client = await pool.connect();
-    
-    // Get current user data to handle partial updates
-    const currentUserData = await client.query('SELECT * FROM users WHERE userid = $1', [userid]);
-    if (currentUserData.rows.length === 0) {
-      return res.status(404).json({ message: 'User not found', success: false });
-    }
-    
-    const current = currentUserData.rows[0];
-    
-    
-    const {
-      username = current.username,
-      password = current.password, 
-      ufirstname = current.ufirstname,
-      ulastname = current.ulastname,
-      udob = current.udob,
-      utitle = current.utitle, 
-      ugender = current.ugender,
-      uemail = current.uemail,
-      uphoneno = current.uphoneno,
-      ucountry = current.ucountry,
-      uzipcode = current.uzipcode
-    } = req.body;
-    
-    // Update only the fields that are provided
-    const result = await client.query(
-      `UPDATE users SET 
+
+    // Update user profile
+    const query = `
+      UPDATE users 
+      SET 
         username = $1, 
         password = $2, 
         ufirstname = $3, 
@@ -2067,22 +2046,20 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
         ucountry = $10, 
         uzipcode = $11
       WHERE userid = $12
-      RETURNING userid`,
-      [username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userid]
-    );
-    
-    if (result.rowCount === 0) {
-      return res.status(500).json({ message: 'Failed to update profile', success: false });
+      RETURNING userid;
+    `;
+
+    const values = [username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userid];
+    const result = await client.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found or no changes made.', success: false });
     }
-    
+
     res.status(200).json({ message: 'Profile updated successfully.', success: true });
   } catch (err) {
     console.error('Error updating user profile:', err);
-    res.status(500).json({ 
-      message: 'An error occurred while updating the profile.', 
-      details: err.message,
-      success: false 
-    });
+    res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
   } finally {
     if (client) {
       client.release();
@@ -2090,51 +2067,47 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
   }
 });
 
-
-// Update avatar
+// Upload user avatar
 app.post('/users/uploadavatar/:userid', async (req, res) => {
   const { userid } = req.params;
   const { uimage } = req.body;
   let client;
-  
+
   // Validate userid
   if (isNaN(userid)) {
     console.error("Invalid userid:", userid);
     return res.status(400).json({ message: 'Invalid userid' });
   }
-  
+
   if (!uimage) {
     console.error("No image data received");
     return res.status(400).json({ message: 'No image data provided.' });
   }
-  
+
   try {
     client = await pool.connect();
-    
+
     // Check if user exists
     const userCheck = await client.query('SELECT userid FROM users WHERE userid = $1', [userid]);
     if (userCheck.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
-    // Store the base64 data directly
+
+    // Update user avatar
     const result = await client.query(
       `UPDATE users SET uimage = $1 WHERE userid = $2 RETURNING userid`,
       [uimage, userid]
     );
-    
-    if (result.rowCount === 0) {
+
+    if (result.rows.length === 0) {
       return res.status(500).json({ message: 'Failed to update user avatar' });
     }
-    
+
     console.log("Avatar uploaded successfully for user:", userid);
     return res.status(200).json({ message: 'Avatar uploaded successfully' });
   } catch (err) {
-    console.error("Error uploading avatar:", err);
-    return res.status(500).json({ 
-      message: `Error uploading avatar: ${err.message}`,
-      details: err.toString()
-    });
+    console.error("Error uploading avatar:", err.message);
+    return res.status(500).json({ message: `Error uploading avatar: ${err.message}` });
   } finally {
     if (client) {
       client.release();
