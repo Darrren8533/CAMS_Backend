@@ -996,25 +996,34 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
   }
 });
 
-// Update property status
-app.patch('/updatePropertyStatus/:propertyid', async (req, res) => {
+// Update Property Status API
+app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
   const { propertystatus } = req.body;
 
+  if (!propertystatus) {
+    return res.status(400).json({ message: "Property status is required" });
+  }
+
+  let client;
   try {
-    client = await pool.connect();
-    await client.query(
-      'UPDATE "properties" SET "propertystatus" = $1 WHERE "propertyid" = $2',
+    client = await pool.connect(); 
+    const result = await client.query(
+      'UPDATE properties SET propertystatus = $1 WHERE propertyid = $2 RETURNING *',
       [propertystatus, propertyid]
     );
 
-    res.status(200).json({ message: 'Property status updated successfully' });
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Property not found" });
+    }
+
+    res.status(200).json({ message: "Property status updated successfully", property: result.rows[0] });
   } catch (error) {
-    console.error('Error updating property status:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error updating property status:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   } finally {
     if (client) {
-      client.release();
+      client.release(); 
     }
   }
 });
