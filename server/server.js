@@ -1030,31 +1030,40 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
 });
 
 
-// Delete a property by propertyid
 app.delete('/propertiesListing/:propertyid', async (req, res) => {
   const { propertyid } = req.params;
+  let client;
 
   try {
-    // Check if the property exists
-    const propertyCheck = await pool.request()
-      .input('propertyid', sql.Int, propertyid)
-      .query('SELECT propertyid FROM Properties WHERE propertyid = @propertyid');
+    client = await pool.connect();
 
-    if (propertyCheck.recordset.length === 0) {
+    // Check if the property exists
+    const propertyCheck = await client.query(
+      'SELECT propertyid FROM "Properties" WHERE propertyid = $1',
+      [propertyid]
+    );
+
+    if (propertyCheck.rowCount === 0) {
       return res.status(404).json({ message: 'Property not found', success: false });
     }
 
     // Delete the property from the database
-    await pool.request()
-      .input('propertyid', sql.Int, propertyid)
-      .query('DELETE FROM Properties WHERE propertyid = @propertyid');
+    await client.query(
+      'DELETE FROM "Properties" WHERE propertyid = $1',
+      [propertyid]
+    );
 
     res.status(200).json({ message: 'Property deleted successfully', success: true });
   } catch (err) {
     console.error('Error deleting property:', err);
-    res.status(500).json({ message: 'Internal Server Error', details: err.message, success: false });
+    res.status(500).json({ message: 'Internal Server Error'});
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
+
 
 // Check user status by userID
 app.get('/checkStatus', async(req, res) => {
