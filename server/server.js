@@ -1000,9 +1000,9 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 // Update Property Status API
 app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
-  const { propertystatus } = req.body;
+  const { propertyStatus } = req.body;  // 修改这里：propertystatus -> propertyStatus
 
-  if (!propertystatus) {
+  if (!propertyStatus) {
     return res.status(400).json({ message: "Property status is required" });
   }
 
@@ -1011,7 +1011,7 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
     client = await pool.connect(); 
     const result = await client.query(
       'UPDATE properties SET propertystatus = $1 WHERE propertyid = $2 RETURNING *',
-      [propertystatus, propertyid]
+      [propertyStatus, propertyid]  // 这里使用新的变量名
     );
 
     if (result.rowCount === 0) {
@@ -1375,7 +1375,7 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
     client = await pool.connect();
     const result = await client.query(
       `SELECT p.propertyaddress, u.ulastname, u.uemail, u.utitle 
-       FROM properties p  // 修改这里：Property -> properties
+       FROM properties p  
        JOIN users u ON u.userid = p.userid 
        WHERE p.propertyid = $1`,
       [propertyid]
