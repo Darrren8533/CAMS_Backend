@@ -720,12 +720,12 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           ]
       );
 
-      const propertyID = propertyListingResult.rows[0].propertyid;
+      const propertyid = propertyListingResult.rows[0].propertyid;
       
       // 提交事务
       await client.query('COMMIT');
 
-      res.status(201).json({ message: 'Property created successfully', propertyID });
+      res.status(201).json({ message: 'Property created successfully', propertyid });
   } catch (err) {
       // 回滚事务
       if (client) {
@@ -903,8 +903,8 @@ app.get('/propertiesListingTable', async (req, res) => {
 });
 
 // Update an existing property listing by property ID
-app.put('/propertiesListing/:propertyID', upload.array('propertyImage', 10), async (req, res) => {
-  const { propertyID } = req.params;
+app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), async (req, res) => {
+  const { propertyid } = req.params;
   const {
       propertyAddress, propertyPrice, propertyDescription, nearbyLocation,
       propertyBedType, propertyGuestPaxNo, clusterName, categoryName
@@ -917,8 +917,8 @@ app.put('/propertiesListing/:propertyID', upload.array('propertyImage', 10), asy
 
       // Fetch the current status of the property
       const propertyResult = await pool.request()
-          .input('propertyID', sql.Int, propertyID)
-          .query('SELECT propertyStatus, propertyImage FROM Properties WHERE propertyID = @propertyID');
+          .input('propertyid', sql.Int, propertyid)
+          .query('SELECT propertyStatus, propertyImage FROM Properties WHERE propertyid = @propertyid');
 
       if (propertyResult.recordset.length === 0) {
           return res.status(404).json({ error: 'Property not found' });
@@ -943,7 +943,7 @@ app.put('/propertiesListing/:propertyID', upload.array('propertyImage', 10), asy
 
       // Update the property
       await pool.request()
-          .input('propertyID', sql.Int, propertyID)
+          .input('propertyid', sql.Int, propertyid)
           .input('propertyAddress', sql.VarChar, propertyAddress)
           .input('nearbyLocation', sql.VarChar, nearbyLocation)
           .input('propertyBedType', sql.VarChar, propertyBedType)
@@ -959,7 +959,7 @@ app.put('/propertiesListing/:propertyID', upload.array('propertyImage', 10), asy
                   propertyBedType = @propertyBedType, 
                   propertyGuestPaxNo = @propertyGuestPaxNo, 
                   propertyImage = @propertyImage
-              WHERE propertyID = @propertyID
+              WHERE propertyid = @propertyid
           `);
 
         await pool.request()
@@ -997,7 +997,7 @@ app.put('/propertiesListing/:propertyID', upload.array('propertyImage', 10), asy
 });
 
 // Update property status
-app.patch('/updatePropertyStatus/:propertyID', async (req, res) => {
+app.patch('/updatePropertyStatus/:propertyid', async (req, res) => {
   const { propertyid } = req.params;
   const { propertystatus } = req.body;
 
@@ -1020,15 +1020,15 @@ app.patch('/updatePropertyStatus/:propertyID', async (req, res) => {
 });
 
 
-// Delete a property by propertyID
-app.delete('/propertiesListing/:propertyID', async (req, res) => {
-  const { propertyID } = req.params;
+// Delete a property by propertyid
+app.delete('/propertiesListing/:propertyid', async (req, res) => {
+  const { propertyid } = req.params;
 
   try {
     // Check if the property exists
     const propertyCheck = await pool.request()
-      .input('propertyID', sql.Int, propertyID)
-      .query('SELECT propertyID FROM Properties WHERE propertyID = @propertyID');
+      .input('propertyid', sql.Int, propertyid)
+      .query('SELECT propertyid FROM Properties WHERE propertyid = @propertyid');
 
     if (propertyCheck.recordset.length === 0) {
       return res.status(404).json({ message: 'Property not found', success: false });
@@ -1036,8 +1036,8 @@ app.delete('/propertiesListing/:propertyID', async (req, res) => {
 
     // Delete the property from the database
     await pool.request()
-      .input('propertyID', sql.Int, propertyID)
-      .query('DELETE FROM Properties WHERE propertyID = @propertyID');
+      .input('propertyid', sql.Int, propertyid)
+      .query('DELETE FROM Properties WHERE propertyid = @propertyid');
 
     res.status(200).json({ message: 'Property deleted successfully', success: true });
   } catch (err) {
@@ -1130,19 +1130,19 @@ app.post('/contact_us', async (req, res) => {
 });
 
 // Send Booking Request Message To Administrator Or Moderator
-app.post('/requestBooking/:reservationID', async (req, res) => {
-  const { reservationID } = req.params;
+app.post('/requestBooking/:reservationid', async (req, res) => {
+  const { reservationid } = req.params;
 
   try {
     const result = await pool.request()
-      .input('reservationID', sql.Int, reservationID)
-      .query(`SELECT rc.rcLastName, rc.rcTitle, r.checkInDateTime, r.checkOutDateTime, r.request, r.totalPrice, p.propertyAddress, u.uemail FROM Reservation_Customer_Details rc JOIN Reservation r ON rc.rcID = r.rcID JOIN Properties p ON r.propertyID = p.propertyID JOIN users u ON u.userid = p.userid WHERE reservationID = @reservationID`);
+      .input('reservationid', sql.Int, reservationid)
+      .query(`SELECT rc.rclastname, rc.rctitle, r.propertyidcheckindatetime, r.checkoutdatetime, r.request, r.totalprice, p.propertyAddress, u.uemail FROM Reservation_Customer_Details rc JOIN Reservation r ON rc.rcID = r.rcID JOIN Properties p ON r.propertyid = p.propertyid JOIN users u ON u.userid = p.userid WHERE reservationid = @reservationid`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Reservation or user not found for this property' });
     }
 
-    const { rcLastName: customerLastName, rcTitle: customerTitle, checkInDateTime: reservationCheckInDateTime, checkOutDateTime: reservationCheckOutDateTime, request: reservationRequest = '-', totalPrice: reservationTotalPrice, propertyAddress: reservationProperty, uemail: userEmail } = result.recordset[0];
+    const { rclastname: customerLastName, rctitle: customerTitle, propertyidcheckindatetime: reservationpropertyidcheckindatetime, checkoutdatetime: reservationcheckoutdatetime, request: reservationRequest = '-', totalprice: reservationtotalprice, propertyAddress: reservationProperty, uemail: userEmail } = result.recordset[0];
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1158,12 +1158,12 @@ app.post('/requestBooking/:reservationID', async (req, res) => {
       subject: 'Booking Request',
       html: `
       <h1><b>Do You Accept This Booking By ${customerTitle} ${customerLastName}?</b></h1><hr/>
-      <p><b>Check In Date:</b> ${reservationCheckInDateTime}</p>
-      <p><b>Check Out Date:</b> ${reservationCheckOutDateTime}</p>
+      <p><b>Check In Date:</b> ${reservationpropertyidcheckindatetime}</p>
+      <p><b>Check Out Date:</b> ${reservationcheckoutdatetime}</p>
       <p><b>Pax Number:</b> ${reservationPaxNumber}</p>
       <p><b>Request:</b> ${reservationRequest}</p>
       <p><b>Property Name:</b> ${reservationProperty}</p>
-      <p><b>Total Price: <i>RM${reservationTotalPrice}</i></b></p><br/>
+      <p><b>Total Price: <i>RM${reservationtotalprice}</i></b></p><br/>
       <p><b>Please kindly click the button below to make the decision in <b>12 hours</b> time frame.</b></p>
       <div style="margin: 10px 0;">
         <a href="" style="background-color: green; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Accept</a>
@@ -1181,19 +1181,19 @@ app.post('/requestBooking/:reservationID', async (req, res) => {
 });
 
 // Send Booking Request Accepted Message To Customer
-app.post('/accept_booking/:reservationID', async (req, res) => {
-  const { reservationID } = req.params;
+app.post('/accept_booking/:reservationid', async (req, res) => {
+  const { reservationid } = req.params;
 
   try {
     const result = await pool.request()
-      .input('reservationID', sql.Int, reservationID)
-      .query(`SELECT rc.rcLastName, rc.rcEmail, rc.rcTitle, r.checkInDateTime, r.checkOutDateTime, r.reservationBlockTime, p.propertyAddress FROM Reservation_Customer_Details rc JOIN Reservation r ON rc.rcID = r.rcID JOIN Properties p ON r.propertyID = p.propertyID WHERE reservationID = @reservationID`);
+      .input('reservationid', sql.Int, reservationid)
+      .query(`SELECT rc.rclastname, rc.rcemail, rc.rctitle, r.propertyidcheckindatetime, r.checkoutdatetime, r.reservationblocktime, p.propertyAddress FROM Reservation_Customer_Details rc JOIN Reservation r ON rc.rcID = r.rcID JOIN Properties p ON r.propertyid = p.propertyid WHERE reservationid = @reservationid`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Reservation customer or property not found for this reservation' });
     }
 
-    const { rcLastName: customerLastName, rcEmail: customerEmail, rcTitle: customerTitle, checkInDateTime: reservationCheckInDate, checkOutDateTime: reservationCheckOutDate, reservationBlockTime: paymentDueDate, propertyAddress: reservationProperty } = result.recordset[0];
+    const { rclastname: customerLastName, rcemail: customerEmail, rctitle: customerTitle, propertyidcheckindatetime: reservationCheckInDate, checkoutdatetime: reservationCheckOutDate, reservationblocktime: paymentDueDate, propertyAddress: reservationProperty } = result.recordset[0];
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1224,13 +1224,13 @@ app.post('/accept_booking/:reservationID', async (req, res) => {
 });
 
 // Send New Room Suggestion To Customer
-app.post('/suggestNewRoom/:propertyID/:reservationID', async (req, res) => {
-  const { propertyID, reservationID } = req.params;
+app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
+  const { propertyid, reservationid } = req.params;
 
   try {
     const result = await pool.request()
-      .input('propertyID', sql.Int, propertyID)
-      .query(`SELECT propertyAddress, propertyPrice, propertyLocation, propertyBedType, propertyGuestPaxNo FROM Property WHERE propertyID = @propertyID`);
+      .input('propertyid', sql.Int, propertyid)
+      .query(`SELECT propertyAddress, propertyPrice, propertyLocation, propertyBedType, propertyGuestPaxNo FROM Property WHERE propertyid = @propertyid`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Property not found for suggestion' });
@@ -1241,14 +1241,14 @@ app.post('/suggestNewRoom/:propertyID/:reservationID', async (req, res) => {
     const { propertyAddress: suggestpropertyAddress, propertyPrice: suggestPropertyPrice, propertyLocation: suggestPropertyLocation, propertyBedType: suggestPropertyBedType, propertyGuestPaxNo: suggestPropertyGuestPaxNo } = property;
 
     const customerReservationResult = await pool.request()
-      .input('reservationID', sql.Int, reservationID)
-      .query(`SELECT rc.rcLastName, rc.rcEmail, rc.rcTitle, p.propertyAddress, r.checkInDateTime, r.checkOutDateTime FROM Reservation r JOIN Properties p ON p.propertyID = r.propertyID JOIN Reservation_Customer_Details rc ON rc.rcID = r.rcID WHERE reservationID = @reservationID`);
+      .input('reservationid', sql.Int, reservationid)
+      .query(`SELECT rc.rclastname, rc.rcemail, rc.rctitle, p.propertyAddress, r.propertyidcheckindatetime, r.checkoutdatetime FROM Reservation r JOIN Properties p ON p.propertyid = r.propertyid JOIN Reservation_Customer_Details rc ON rc.rcID = r.rcID WHERE reservationid = @reservationid`);
 
     if (customerReservationResult.recordset.length === 0) {
       return res.status(404).json({ message: 'User email not found for suggestion' });
     }
 
-    const { rcLastName: customerLastName, rcEmail: customerEmail, rcTitle: customerTitle, propertyAddress: reservationProperty, checkInDateTime: reservationCheckInDate, checkOutDateTime: reservationCheckOutDate } = customerReservationResult.recordset[0];
+    const { rclastname: customerLastName, rcemail: customerEmail, rctitle: customerTitle, propertyAddress: reservationProperty, propertyidcheckindatetime: reservationCheckInDate, checkoutdatetime: reservationCheckOutDate } = customerReservationResult.recordset[0];
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1288,8 +1288,8 @@ app.post('/suggestNewRoom/:propertyID/:reservationID', async (req, res) => {
 });
 
 // Send Properties Listing Request Notification From Moderator
-app.post('/propertyListingRequest/:propertyID', async (req, res) => {
-  const { propertyID } = req.params;
+app.post('/propertyListingRequest/:propertyid', async (req, res) => {
+  const { propertyid } = req.params;
   let client;
 
   try {
@@ -1300,7 +1300,7 @@ app.post('/propertyListingRequest/:propertyID', async (req, res) => {
        FROM property p 
        JOIN users u ON u.userid = p.userid 
        WHERE p.propertyid = $1`,
-      [propertyID]
+      [propertyid]
     );
 
     if (moderatorResult.rows.length === 0) {
@@ -1357,13 +1357,13 @@ app.post('/propertyListingRequest/:propertyID', async (req, res) => {
 });
 
 // Send Properties Listing Request Accepted Notification To Moderator
-app.post('/propertyListingAccept/:propertyID', async (req, res) => {
-  const { propertyID } = req.params;
+app.post('/propertyListingAccept/:propertyid', async (req, res) => {
+  const { propertyid } = req.params;
 
   try {
     const result = await pool.request()
-      .input('propertyID', sql.Int, propertyID)
-      .query(`SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle FROM Property p JOIN users u ON u.userid = p.userid WHERE p.propertyID = @propertyID`);
+      .input('propertyid', sql.Int, propertyid)
+      .query(`SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle FROM Property p JOIN users u ON u.userid = p.userid WHERE p.propertyid = @propertyid`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Property or user not found for this reservation' });
@@ -1400,13 +1400,13 @@ app.post('/propertyListingAccept/:propertyID', async (req, res) => {
 });
 
 // Send Properties Listing Request Rejected Notification To Moderator
-app.post('/propertyListingReject/:propertyID', async (req, res) => {
-  const { propertyID } = req.params;
+app.post('/propertyListingReject/:propertyid', async (req, res) => {
+  const { propertyid } = req.params;
 
   try {
     const result = await pool.request()
-      .input('propertyID', sql.Int, propertyID)
-      .query(`SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle FROM Property p JOIN users u ON u.userid = p.userid WHERE p.propertyID = @propertyID`);
+      .input('propertyid', sql.Int, propertyid)
+      .query(`SELECT p.propertyAddress, u.ulastname, u.uemail, u.utitle FROM Property p JOIN users u ON u.userid = p.userid WHERE p.propertyid = @propertyid`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Property or user not found for this reservation' });
@@ -1443,9 +1443,9 @@ app.post('/propertyListingReject/:propertyID', async (req, res) => {
 });
 
 // Send "Suggest" Notification To Operators
-app.post('/sendSuggestNotification/:reservationID', async (req, res) => {
+app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
   const { userids } = req.body;
-  const { reservationID } = req.params;
+  const { reservationid } = req.params;
 
   try {
     const result = await pool.query(`
@@ -1461,14 +1461,14 @@ app.post('/sendSuggestNotification/:reservationID', async (req, res) => {
     const selectedEmails = result.recordset.map(record => record.uemail);
 
     const reservationResult = await pool.request()
-      .input('reservationID', sql.Int, reservationID)
-      .query(`SELECT p.propertyAddress, r.checkInDateTime, r.checkOutDateTime, rc.rcLastName, rc.rcTitle FROM Property p JOIN Reservation r ON p.propertyID = r.propertyID JOIN Reservation_Customer_Details rc ON rc.rcID = r.rcID WHERE reservationID = @reservationID`);
+      .input('reservationid', sql.Int, reservationid)
+      .query(`SELECT p.propertyAddress, r.propertyidcheckindatetime, r.checkoutdatetime, rc.rclastname, rc.rctitle FROM Property p JOIN Reservation r ON p.propertyid = r.propertyid JOIN Reservation_Customer_Details rc ON rc.rcID = r.rcID WHERE reservationid = @reservationid`);
 
     if(reservationResult.recordset.length === 0) {
       return res.status(404).json({ message: 'No reservation or customer found' });
     }
 
-    const { propertyAddress: reservationProperty, checkInDateTime: reservationCheckInDate, checkOutDateTime: reservationCheckOutDate, rcLastName: customerLastName, rcTitle: customerTitle } = reservationResult.recordset[0];
+    const { propertyAddress: reservationProperty, propertyidcheckindatetime: reservationCheckInDate, checkoutdatetime: reservationCheckOutDate, rclastname: customerLastName, rctitle: customerTitle } = reservationResult.recordset[0];
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1505,7 +1505,7 @@ app.post('/sendSuggestNotification/:reservationID', async (req, res) => {
 
 //Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
-  const { propertyID, checkInDateTime, checkOutDateTime, reservationBlockTime, request, totalPrice, adults, children, rcFirstName, rcLastName, rcEmail, rcPhoneNo, rcTitle } = req.body;
+  const { propertyid, checkindatetime, checkoutdatetime, reservationblocktime, request, totalprice, adults, children, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
 
   if (!userid) {
@@ -1516,54 +1516,54 @@ app.post('/reservation/:userid', async (req, res) => {
   try {
     // Insert customer details
     const customerResult = await pool.request()
-      .input('rcFirstName', sql.VarChar, rcFirstName)
-      .input('rcLastName', sql.VarChar, rcLastName)
-      .input('rcEmail', sql.VarChar, rcEmail)
-      .input('rcPhoneNo', sql.BigInt, rcPhoneNo)
-      .input('rcTitle', sql.VarChar, rcTitle)
+      .input('rcfirstname', sql.VarChar, rcfirstname)
+      .input('rclastname', sql.VarChar, rclastname)
+      .input('rcemail', sql.VarChar, rcemail)
+      .input('rcphoneno', sql.BigInt, rcphoneno)
+      .input('rctitle', sql.VarChar, rctitle)
       .query(`
-        INSERT INTO Reservation_Customer_Details (rcFirstName, rcLastName, rcEmail, rcPhoneNo, rcTitle)
+        INSERT INTO Reservation_Customer_Details (rcfirstname, rclastname, rcemail, rcphoneno, rctitle)
         OUTPUT inserted.rcID
-        VALUES (@rcFirstName, @rcLastName, @rcEmail, @rcPhoneNo, @rcTitle)
+        VALUES (@rcfirstname, @rclastname, @rcemail, @rcphoneno, @rctitle)
       `);
 
     const rcID = customerResult.recordset[0].rcID;
     const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const reservationBlockTime = new Date(reservationDateTime.getTime() + 60  * 1000);
+    const reservationblocktime = new Date(reservationDateTime.getTime() + 60  * 1000);
 
     // Insert reservation details
     const reservationResult = await pool.request()
-      .input('propertyID', sql.Int, propertyID)
-      .input('checkInDateTime', sql.DateTime, checkInDateTime)
-      .input('checkOutDateTime', sql.DateTime, checkOutDateTime)
-      .input('reservationBlockTime', sql.DateTime, reservationBlockTime)
+      .input('propertyid', sql.Int, propertyid)
+      .input('propertyidcheckindatetime', sql.DateTime, propertyidcheckindatetime)
+      .input('checkoutdatetime', sql.DateTime, checkoutdatetime)
+      .input('reservationblocktime', sql.DateTime, reservationblocktime)
       .input('request', sql.VarChar, request)
-      .input('totalPrice', sql.Float, totalPrice)
+      .input('totalprice', sql.Float, totalprice)
       .input('rcID', sql.Int, rcID)
       .input('reservationStatus', sql.VarChar, 'Pending')
       .input('userid', sql.Int, userid)
       .query(`
-        INSERT INTO Reservation (propertyID, checkInDateTime, checkOutDateTime, reservationBlockTime, request, totalPrice, rcID, reservationStatus, userid)
-        OUTPUT inserted.reservationID
-        VALUES (@propertyID, @checkInDateTime, @checkOutDateTime, @reservationBlockTime, @request, @totalPrice, @rcID, @reservationStatus, @userid)
+        INSERT INTO reservation (propertyid, propertyidcheckindatetime, checkoutdatetime, reservationblocktime, request, totalprice, rcID, reservationStatus, userid)
+        OUTPUT inserted.reservationid
+        VALUES (@propertyid, @propertyidcheckindatetime, @checkoutdatetime, @reservationblocktime, @request, @totalprice, @rcID, @reservationStatus, @userid)
       `);
 
-    const reservationID = reservationResult.recordset[0].reservationID;
+    const reservationid = reservationResult.recordset[0].reservationid;
 
-    // Log the booking in Audit_Trail with the propertyID and reservationID
+    // Log the booking in Audit_Trail with the propertyid and reservationid
     await pool.request()
       .input('timestamp', sql.DateTime, new Date())
-      .input('action', sql.VarChar, `Booking created for reservationID ${reservationID} and propertyID ${propertyID}`)
+      .input('action', sql.VarChar, `Booking created for reservationid ${reservationid} and propertyid ${propertyid}`)
       .input('userid', sql.Int, userid)
-      .input('entityID', sql.Int, userid)
-      .input('actionType', sql.VarChar, `abc`)
-      .input('entityType', sql.VarChar, `abc`)
+      .input('entityid', sql.Int, userid)
+      .input('actiontype', sql.VarChar, `abc`)
+      .input('entitytype', sql.VarChar, `abc`)
       .query(`
-        INSERT INTO Audit_Trail (timestamp, action, userid, entityID, actionType, entityType)
-        VALUES (@timestamp, @action, @userid, @entityID, @actionType, @entityType)
+        INSERT INTO Audit_Trail (timestamp, action, userid, entityid, actiontype, entitytype)
+        VALUES (@timestamp, @action, @userid, @entityid, @actiontype, @entitytype)
       `);
 
-    res.status(201).json({ message: 'Reservation and Audit Log created successfully', reservationID });
+    res.status(201).json({ message: 'Reservation and Audit Log created successfully', reservationid });
   } catch (err) {
     console.error('Error inserting reservation data:', err);
     res.status(500).json({ message: 'Internal Server Error', details: err.message });
@@ -1579,29 +1579,29 @@ app.get('/users/booklog', async (req, res) => {
         a.timestamp, 
         a.action,
         CASE 
-          WHEN CHARINDEX('PropertyID', a.action) > 0 
+          WHEN CHARINDEX('propertyid', a.action) > 0 
           THEN
             CAST(
               LEFT(
                 LTRIM(
                   SUBSTRING(
                     a.action,
-                    CHARINDEX('PropertyID ', a.action) + 10, 
-                    LEN(a.action) - CHARINDEX('PropertyID ', a.action) + 10
+                    CHARINDEX('propertyid ', a.action) + 10, 
+                    LEN(a.action) - CHARINDEX('propertyid ', a.action) + 10
                   )
                 ),
                 CHARINDEX(' ', 
                   LTRIM(SUBSTRING(
                     a.action,
-                    CHARINDEX('PropertyID ', a.action) + 10, 
-                    LEN(a.action) - CHARINDEX('PropertyID ', a.action) + 10
+                    CHARINDEX('propertyid ', a.action) + 10, 
+                    LEN(a.action) - CHARINDEX('propertyid ', a.action) + 10
                   )) + ' ') - 1
               ) AS INT
             )
           ELSE NULL 
-        END AS propertyID
+        END AS propertyid
       FROM Audit_Trail a
-      WHERE a.action LIKE '%PropertyID%'
+      WHERE a.action LIKE '%propertyid%'
       ORDER BY a.timestamp DESC
     `);
 
@@ -1616,12 +1616,12 @@ app.get('/users/finance', async (req, res) => {
   try {
     const result = await pool.request().query(`
       SELECT 
-        FORMAT(checkInDateTime, 'yyyy-MM') as month,
-        SUM(totalPrice) AS monthlyRevenue,
-        COUNT(reservationID) AS monthlyReservations
+        FORMAT(propertyidcheckindatetime, 'yyyy-MM') as month,
+        SUM(totalprice) AS monthlyRevenue,
+        COUNT(reservationid) AS monthlyReservations
       FROM Reservation
       WHERE reservationStatus = 'Accepted'
-      GROUP BY FORMAT(checkInDateTime, 'yyyy-MM')
+      GROUP BY FORMAT(propertyidcheckindatetime, 'yyyy-MM')
       ORDER BY month;
     `);
 
@@ -1656,22 +1656,22 @@ app.get('/cart', async (req, res) => {
       .input('userid', sql.Int, userid)
       .query(`
         SELECT 
-          r.reservationID,
-          r.propertyID,
+          r.reservationid,
+          r.propertyid,
           p.propertyAddress, 
           p.propertyImage,
-          r.checkInDateTime,
-          r.checkOutDateTime,
-          r.reservationBlockTime,
+          r.propertyidcheckindatetime,
+          r.checkoutdatetime,
+          r.reservationblocktime,
           r.request,
-          r.totalPrice,
+          r.totalprice,
           r.reservationStatus,
           r.rcID,
           r.userid
         FROM 
           Reservation r
         JOIN 
-          Properties p ON r.propertyID = p.propertyID
+          Properties p ON r.propertyid = p.propertyid
         WHERE 
           r.userid = @userid
       `);
@@ -1718,27 +1718,27 @@ app.get('/reservationTable', async (req, res) => {
     // Base query for fetching reservations
     let query = `
       SELECT 
-        r.reservationID,
-        r.propertyID,
+        r.reservationid,
+        r.propertyid,
         p.propertyAddress, 
         p.propertyImage,
         p.userid,
-        r.checkInDateTime,
-        r.checkOutDateTime,
-        r.reservationBlockTime,
+        r.propertyidcheckindatetime,
+        r.checkoutdatetime,
+        r.reservationblocktime,
         r.request,
-        r.totalPrice,
+        r.totalprice,
         r.reservationStatus,
         r.rcID,
-        rc.rcFirstName,
-        rc.rcLastName,
-        rc.rcEmail,
-        rc.rcPhoneNo,
-        rc.rcTitle
+        rc.rcfirstname,
+        rc.rclastname,
+        rc.rcemail,
+        rc.rcphoneno,
+        rc.rctitle
       FROM 
         Reservation r
       JOIN 
-        Properties p ON r.propertyID = p.propertyID
+        Properties p ON r.propertyid = p.propertyid
       JOIN 
         Reservation_Customer_Details rc ON r.rcID = rc.rcID
     `;
@@ -1770,17 +1770,17 @@ app.get('/reservationTable', async (req, res) => {
 });
 
 // Update reservation status to "Canceled"
-app.put('/cancelReservation/:reservationID', async (req, res) => {
-  const { reservationID } = req.params;
+app.put('/cancelReservation/:reservationid', async (req, res) => {
+  const { reservationid } = req.params;
 
   try {
     await pool.request()
-      .input('reservationID', sql.Int, reservationID)
+      .input('reservationid', sql.Int, reservationid)
       .input('reservationStatus', sql.VarChar, 'Canceled')
       .query(`
         UPDATE Reservation 
         SET reservationStatus = @reservationStatus
-        WHERE reservationID = @reservationID;
+        WHERE reservationid = @reservationid;
       `);
 
     res.status(200).json({ message: 'Reservation status updated to Canceled' });
@@ -1791,15 +1791,15 @@ app.put('/cancelReservation/:reservationID', async (req, res) => {
 });
 
 // Update reservation status
-app.patch('/updateReservationStatus/:reservationID', async (req, res) => {
-  const { reservationID } = req.params;
+app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
+  const { reservationid } = req.params;
   const { reservationStatus } = req.body;
 
   try {
     await pool.request()
       .input('reservationStatus', sql.VarChar, reservationStatus)
-      .input('reservationID', sql.Int, reservationID)
-      .query(`UPDATE Reservation SET reservationStatus = @reservationStatus WHERE reservationID = @reservationID`);
+      .input('reservationid', sql.Int, reservationid)
+      .query(`UPDATE Reservation SET reservationStatus = @reservationStatus WHERE reservationid = @reservationid`);
 
     res.status(200).json({ message: 'Reservation status updated successfully' });
   } catch (error) {
@@ -1809,14 +1809,14 @@ app.patch('/updateReservationStatus/:reservationID', async (req, res) => {
 });
 
 // Remove reservation
-app.delete('/removeReservation/:reservationID', async (req, res) => {
-  const { reservationID } = req.params;
+app.delete('/removeReservation/:reservationid', async (req, res) => {
+  const { reservationid } = req.params;
 
   try {
     // Delete reservation from the Reservation table
     await pool.request()
-      .input('reservationID', sql.Int, reservationID)
-      .query(`DELETE FROM Reservation WHERE reservationID = @reservationID`);
+      .input('reservationid', sql.Int, reservationid)
+      .query(`DELETE FROM Reservation WHERE reservationid = @reservationid`);
 
     res.status(200).json({ message: 'Reservation removed successfully' });
   } catch (err) {
