@@ -1235,17 +1235,40 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
 // Send Booking Request Accepted Message To Customer
 app.post('/accept_booking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
+  let client;
 
   try {
-    const result = await pool.request()
-      .input('reservationid', sql.Int, reservationid)
-      .query(`SELECT rc.rclastname, rc.rcemail, rc.rctitle, r.propertyidcheckindatetime, r.checkoutdatetime, r.reservationblocktime, p.propertyAddress FROM Reservation_Customer_Details rc JOIN Reservation r ON rc.rcID = r.rcID JOIN Properties p ON r.propertyid = p.propertyid WHERE reservationid = @reservationid`);
+    client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        rc.rclastname, 
+        rc.rcemail, 
+        rc.rctitle, 
+        r.checkindatetime, 
+        r.checkoutdatetime, 
+        r.reservationblocktime, 
+        p.propertyaddress 
+      FROM reservation_customer_details rc 
+      JOIN reservation r ON rc.rcid = r.rcid 
+      JOIN properties p ON r.propertyid = p.propertyid 
+      WHERE r.reservationid = $1`,
+      [reservationid]
+    );
 
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ message: 'Reservation customer or property not found for this reservation' });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Reservation customer or property not found' });
     }
 
-    const { rclastname: customerLastName, rcemail: customerEmail, rctitle: customerTitle, propertyidcheckindatetime: reservationCheckInDate, checkoutdatetime: reservationCheckOutDate, reservationblocktime: paymentDueDate, propertyAddress: reservationProperty } = result.recordset[0];
+    const { 
+      rclastname: customerLastName, 
+      rcemail: customerEmail, 
+      rctitle: customerTitle, 
+      checkindatetime: reservationCheckInDate, 
+      checkoutdatetime: reservationCheckOutDate, 
+      reservationblocktime: paymentDueDate, 
+      propertyaddress: reservationProperty 
+    } = result.rows[0];
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1268,10 +1291,14 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Email Sent Successfully' })
+    res.status(200).json({ message: 'Email sent successfully' });
   } catch (err) {
-    console.error('Error sending email: ', err);
+    console.error('Error sending email:', err);
     res.status(500).json({ message: 'Failed to send email', error: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
