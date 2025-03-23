@@ -1156,17 +1156,42 @@ app.post("/contact_us", async (req, res) => {
 // Send Booking Request Message To Administrator Or Moderator
 app.post('/requestBooking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
+  let client;
 
   try {
-    const result = await pool.request()
-      .input('reservationid', sql.Int, reservationid)
-      .query(`SELECT rc.rclastname, rc.rctitle, r.propertyidcheckindatetime, r.checkoutdatetime, r.request, r.totalprice, p.propertyAddress, u.uemail FROM Reservation_Customer_Details rc JOIN Reservation r ON rc.rcID = r.rcID JOIN Properties p ON r.propertyid = p.propertyid JOIN users u ON u.userid = p.userid WHERE reservationid = @reservationid`);
+    client = await pool.connect();
+    const result = await client.query(
+      `SELECT 
+        rc.rclastname, 
+        rc.rctitle, 
+        r.propertyidcheckindatetime, 
+        r.checkoutdatetime, 
+        r.request, 
+        r.totalprice, 
+        p.propertyaddress, 
+        u.uemail 
+      FROM reservation_customer_details rc 
+      JOIN reservation r ON rc.rcid = r.rcid 
+      JOIN properties p ON r.propertyid = p.propertyid 
+      JOIN users u ON u.userid = p.userid 
+      WHERE r.reservationid = $1`,
+      [reservationid]
+    );
 
-    if (result.recordset.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Reservation or user not found for this property' });
     }
 
-    const { rclastname: customerLastName, rctitle: customerTitle, propertyidcheckindatetime: reservationpropertyidcheckindatetime, checkoutdatetime: reservationcheckoutdatetime, request: reservationRequest = '-', totalprice: reservationtotalprice, propertyAddress: reservationProperty, uemail: userEmail } = result.recordset[0];
+    const { 
+      rclastname: customerLastName, 
+      rctitle: customerTitle, 
+      propertyidcheckindatetime: reservationpropertyidcheckindatetime, 
+      checkoutdatetime: reservationcheckoutdatetime, 
+      request: reservationRequest = '-', 
+      totalprice: reservationtotalprice, 
+      propertyaddress: reservationProperty, 
+      uemail: userEmail 
+    } = result.rows[0];
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1184,7 +1209,6 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
       <h1><b>Do You Accept This Booking By ${customerTitle} ${customerLastName}?</b></h1><hr/>
       <p><b>Check In Date:</b> ${reservationpropertyidcheckindatetime}</p>
       <p><b>Check Out Date:</b> ${reservationcheckoutdatetime}</p>
-      <p><b>Pax Number:</b> ${reservationPaxNumber}</p>
       <p><b>Request:</b> ${reservationRequest}</p>
       <p><b>Property Name:</b> ${reservationProperty}</p>
       <p><b>Total Price: <i>RM${reservationtotalprice}</i></b></p><br/>
@@ -1201,6 +1225,10 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
   } catch (err) {
     console.error('Error sending email: ', err);
     res.status(500).json({ message: 'Failed to send email', error: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
@@ -1533,68 +1561,91 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
 
 //Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
-  const { propertyid, checkindatetime, checkoutdatetime, reservationblocktime, request, totalprice, adults, children, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
+  const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
 
   if (!userid) {
     return res.status(400).json({ error: 'User ID is required' });
   }
 
-
+  let client;
   try {
-    // Insert customer details
-    const customerResult = await pool.request()
-      .input('rcfirstname', sql.VarChar, rcfirstname)
-      .input('rclastname', sql.VarChar, rclastname)
-      .input('rcemail', sql.VarChar, rcemail)
-      .input('rcphoneno', sql.BigInt, rcphoneno)
-      .input('rctitle', sql.VarChar, rctitle)
-      .query(`
-        INSERT INTO Reservation_Customer_Details (rcfirstname, rclastname, rcemail, rcphoneno, rctitle)
-        OUTPUT inserted.rcID
-        VALUES (@rcfirstname, @rclastname, @rcemail, @rcphoneno, @rctitle)
-      `);
+    client = await pool.connect();
 
-    const rcID = customerResult.recordset[0].rcID;
+    // 插入客户详情
+    const customerResult = await client.query(
+      `INSERT INTO reservation_customer_details 
+       (rcfirstname, rclastname, rcemail, rcphoneno, rctitle)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING rcid`,
+      [rcfirstname, rclastname, rcemail, rcphoneno, rctitle]
+    );
+
+    const rcid = customerResult.rows[0].rcid;
     const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const reservationblocktime = new Date(reservationDateTime.getTime() + 60  * 1000);
+    const reservationblocktime = new Date(reservationDateTime.getTime() + 60 * 1000);
 
-    // Insert reservation details
-    const reservationResult = await pool.request()
-      .input('propertyid', sql.Int, propertyid)
-      .input('propertyidcheckindatetime', sql.DateTime, propertyidcheckindatetime)
-      .input('checkoutdatetime', sql.DateTime, checkoutdatetime)
-      .input('reservationblocktime', sql.DateTime, reservationblocktime)
-      .input('request', sql.VarChar, request)
-      .input('totalprice', sql.Float, totalprice)
-      .input('rcID', sql.Int, rcID)
-      .input('reservationStatus', sql.VarChar, 'Pending')
-      .input('userid', sql.Int, userid)
-      .query(`
-        INSERT INTO reservation (propertyid, propertyidcheckindatetime, checkoutdatetime, reservationblocktime, request, totalprice, rcID, reservationStatus, userid)
-        OUTPUT inserted.reservationid
-        VALUES (@propertyid, @propertyidcheckindatetime, @checkoutdatetime, @reservationblocktime, @request, @totalprice, @rcID, @reservationStatus, @userid)
-      `);
+    // 插入预订详情
+    const reservationResult = await client.query(
+      `INSERT INTO reservation 
+       (propertyid, propertyidcheckindatetime, checkoutdatetime, 
+        reservationblocktime, request, totalprice, rcid, 
+        reservationstatus, userid)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING reservationid`,
+      [
+        propertyid,
+        checkindatetime,
+        checkoutdatetime,
+        reservationblocktime,
+        request,
+        totalprice,
+        rcid,
+        'Pending',
+        userid
+      ]
+    );
 
-    const reservationid = reservationResult.recordset[0].reservationid;
+    const reservationid = reservationResult.rows[0].reservationid;
 
-    // Log the booking in Audit_Trail with the propertyid and reservationid
-    await pool.request()
-      .input('timestamp', sql.DateTime, new Date())
-      .input('action', sql.VarChar, `Booking created for reservationid ${reservationid} and propertyid ${propertyid}`)
-      .input('userid', sql.Int, userid)
-      .input('entityid', sql.Int, userid)
-      .input('actiontype', sql.VarChar, `abc`)
-      .input('entitytype', sql.VarChar, `abc`)
-      .query(`
-        INSERT INTO Audit_Trail (timestamp, action, userid, entityid, actiontype, entitytype)
-        VALUES (@timestamp, @action, @userid, @entityid, @actiontype, @entitytype)
-      `);
+    // 记录审计日志
+    await client.query(
+      `INSERT INTO audit_trail 
+       (timestamp, action, userid, entityid, actiontype, entitytype)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        new Date(),
+        `Booking created for reservationid ${reservationid} and propertyid ${propertyid}`,
+        userid,
+        userid,
+        'abc',
+        'abc'
+      ]
+    );
 
-    res.status(201).json({ message: 'Reservation and Audit Log created successfully', reservationid });
+    // 提交事务
+    await client.query('COMMIT');
+
+    res.status(201).json({ 
+      message: 'Reservation and Audit Log created successfully', 
+      reservationid 
+    });
+
   } catch (err) {
+    // 如果出错，回滚事务
+    if (client) {
+      await client.query('ROLLBACK');
+    }
     console.error('Error inserting reservation data:', err);
-    res.status(500).json({ message: 'Internal Server Error', details: err.message });
+    res.status(500).json({ 
+      message: 'Internal Server Error', 
+      details: err.message 
+    });
+  } finally {
+    // 释放客户端连接
+    if (client) {
+      client.release();
+    }
   }
 });
 
