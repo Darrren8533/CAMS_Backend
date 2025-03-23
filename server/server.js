@@ -1728,43 +1728,48 @@ app.get('/cart', async (req, res) => {
     return res.status(400).json({ error: 'Invalid or missing userid' });
   }
 
+  let client;
   try {
-    // Fetch reservations by userid from the database
-    const reservationResult = await pool
-      .request()
-      .input('userid', sql.Int, userid)
-      .query(`
-        SELECT 
-          r.reservationid,
-          r.propertyid,
-          p.propertyAddress, 
-          p.propertyImage,
-          r.propertyidcheckindatetime,
-          r.checkoutdatetime,
-          r.reservationblocktime,
-          r.request,
-          r.totalprice,
-          r.reservationStatus,
-          r.rcID,
-          r.userid
-        FROM 
-          Reservation r
-        JOIN 
-          Properties p ON r.propertyid = p.propertyid
-        WHERE 
-          r.userid = @userid
-      `);
+    client = await pool.connect();
+    
+    // 使用 PostgreSQL 语法查询预订信息
+    const result = await client.query(
+      `SELECT 
+        r.reservationid,
+        r.propertyid,
+        p.propertyaddress, 
+        p.propertyimage,
+        r.propertyidcheckindatetime,
+        r.checkoutdatetime,
+        r.reservationblocktime,
+        r.request,
+        r.totalprice,
+        r.reservationstatus,
+        r.rcid,
+        r.userid
+      FROM 
+        reservation r
+      JOIN 
+        properties p ON r.propertyid = p.propertyid
+      WHERE 
+        r.userid = $1`,
+      [userid]
+    );
 
-    // Process the results to format property image if needed
-    const reservations = reservationResult.recordset.map(reservation => ({
+    // 处理结果，格式化属性图片
+    const reservations = result.rows.map(reservation => ({
       ...reservation,
-      propertyImage: reservation.propertyImage ? reservation.propertyImage.split(',') : []  // Assuming propertyImage is a comma-separated list
+      propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
     }));
 
     res.status(200).json({ userid, reservations });
   } catch (err) {
     console.error('Error fetching reservations by userid:', err);
     res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
