@@ -1739,7 +1739,7 @@ app.get('/cart', async (req, res) => {
         r.propertyid,
         p.propertyaddress, 
         p.propertyimage,
-        r.propertyidcheckindatetime,
+        r.checkindatetime,
         r.checkoutdatetime,
         r.reservationblocktime,
         r.request,
