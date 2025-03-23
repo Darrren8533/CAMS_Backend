@@ -1156,7 +1156,6 @@ app.post("/contact_us", async (req, res) => {
 // Send Booking Request Message To Administrator Or Moderator
 app.post('/requestBooking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
-  console.log("here is " + reservationid);
   let client;
 
   try {
@@ -1589,7 +1588,7 @@ app.post('/reservation/:userid', async (req, res) => {
     // 插入预订详情
     const reservationResult = await client.query(
       `INSERT INTO reservation 
-       (propertyid, propertyidcheckindatetime, checkoutdatetime, 
+       (propertyid, checkindatetime, checkoutdatetime, 
         reservationblocktime, request, totalprice, rcid, 
         reservationstatus, userid)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
