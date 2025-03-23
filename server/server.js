@@ -1903,17 +1903,28 @@ app.put('/cancelReservation/:reservationid', async (req, res) => {
 app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { reservationStatus } = req.body;
+  let client;
 
   try {
-    await pool.request()
-      .input('reservationStatus', sql.VarChar, reservationStatus)
-      .input('reservationid', sql.Int, reservationid)
-      .query(`UPDATE Reservation SET reservationStatus = @reservationStatus WHERE reservationid = @reservationid`);
+    client = await pool.connect();
+    
+    const result = await client.query(
+      'UPDATE reservation SET reservationstatus = $1 WHERE reservationid = $2 RETURNING *',
+      [reservationStatus, reservationid]
+    );
 
-    res.status(200).json({ message: 'Reservation status updated successfully' });
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: '预订记录未找到' });
+    }
+
+    res.status(200).json({ message: '预订状态更新成功' });
   } catch (error) {
-    console.error('Error updating reservation status:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error('更新预订状态时出错:', error);
+    res.status(500).json({ message: '服务器内部错误' });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
