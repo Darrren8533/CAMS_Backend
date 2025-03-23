@@ -1164,7 +1164,7 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
       `SELECT 
         rc.rclastname, 
         rc.rctitle, 
-        r.propertyidcheckindatetime, 
+        r.checkindatetime, 
         r.checkoutdatetime, 
         r.request, 
         r.totalprice, 
