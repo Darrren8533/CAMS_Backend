@@ -1307,28 +1307,52 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
   const { propertyid, reservationid } = req.params;
 
   try {
-    const result = await pool.request()
-      .input('propertyid', sql.Int, propertyid)
-      .query(`SELECT propertyAddress, propertyPrice, propertyLocation, propertyBedType, propertyGuestPaxNo FROM Property WHERE propertyid = @propertyid`);
+    // Fetch property details for suggestion
+    const propertyResult = await pool.query(
+      `SELECT propertyaddress AS "suggestpropertyAddress",
+              propertyprice AS "suggestPropertyPrice",
+              nearbylocation AS "suggestPropertyLocation",
+              propertybedtype AS "suggestPropertyBedType",
+              propertyguestpaxno AS "suggestPropertyGuestPaxNo"
+       FROM property WHERE propertyid = $1`,
+      [propertyid]
+    );
 
-    if (result.recordset.length === 0) {
+    if (propertyResult.rows.length === 0) {
       return res.status(404).json({ message: 'Property not found for suggestion' });
     }
 
-    const property = result.recordset[0];
+    const property = propertyResult.rows[0];
 
-    const { propertyAddress: suggestpropertyAddress, propertyPrice: suggestPropertyPrice, propertyLocation: suggestPropertyLocation, propertyBedType: suggestPropertyBedType, propertyGuestPaxNo: suggestPropertyGuestPaxNo } = property;
+    // Fetch customer and reservation details
+    const customerReservationResult = await pool.query(
+      `SELECT rc.rclastname AS "customerLastName",
+              rc.rcemail AS "customerEmail",
+              rc.rctitle AS "customerTitle",
+              p.propertypddress AS "reservationProperty",
+              r.propertyidcheckindatetime AS "reservationCheckInDate",
+              r.checkoutdatetime AS "reservationCheckOutDate"
+       FROM reservation r
+       JOIN property p ON p.propertyid = r.propertyid
+       JOIN reservation_customer_details rc ON rc.rcID = r.rcID
+       WHERE r.reservationid = $1`,
+      [reservationid]
+    );
 
-    const customerReservationResult = await pool.request()
-      .input('reservationid', sql.Int, reservationid)
-      .query(`SELECT rc.rclastname, rc.rcemail, rc.rctitle, p.propertyAddress, r.propertyidcheckindatetime, r.checkoutdatetime FROM Reservation r JOIN Properties p ON p.propertyid = r.propertyid JOIN Reservation_Customer_Details rc ON rc.rcID = r.rcID WHERE reservationid = @reservationid`);
-
-    if (customerReservationResult.recordset.length === 0) {
+    if (customerReservationResult.rows.length === 0) {
       return res.status(404).json({ message: 'User email not found for suggestion' });
     }
 
-    const { rclastname: customerLastName, rcemail: customerEmail, rctitle: customerTitle, propertyAddress: reservationProperty, propertyidcheckindatetime: reservationCheckInDate, checkoutdatetime: reservationCheckOutDate } = customerReservationResult.recordset[0];
+    const {
+      customerLastName,
+      customerEmail,
+      customerTitle,
+      reservationProperty,
+      reservationCheckInDate,
+      reservationCheckOutDate
+    } = customerReservationResult.rows[0];
 
+    // Email configuration
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -1343,13 +1367,13 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
       subject: 'Booking Request Rejected & New Room Suggestion',
       html: `
       <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
-      <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: red">rejected</span> due to room unavailable during the time selected.</p> 
-      <p>A similar room with the details below is suggested for consideration:</p> 
-      <h3>Property Name: ${suggestpropertyAddress}</h3>
-      <p><b>Property Location:</b> ${suggestPropertyLocation}</p>
-      <p><b>Bed Type:</b> ${suggestPropertyBedType}</p>
-      <p><b>Pax Number:</b> ${suggestPropertyGuestPaxNo}</p>
-      <p><b>Price: <i>RM${suggestPropertyPrice}</i></b></p><br/>
+      <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: red">rejected</span> due to room unavailability during the selected time.</p> 
+      <p>A similar room with the details below is suggested for your consideration:</p> 
+      <h3>Property Name: ${property.suggestpropertyAddress}</h3>
+      <p><b>Property Location:</b> ${property.suggestPropertyLocation}</p>
+      <p><b>Bed Type:</b> ${property.suggestPropertyBedType}</p>
+      <p><b>Pax Number:</b> ${property.suggestPropertyGuestPaxNo}</p>
+      <p><b>Price: <i>RM${property.suggestPropertyPrice}</i></b></p><br/>
       <p>Please kindly make your decision by clicking the buttons below</p>
       <div style="margin: 10px 0;">
         <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pay</a>
@@ -1359,9 +1383,10 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Email Sent Successfully' })
+    res.status(200).json({ message: 'Email Sent Successfully' });
+
   } catch (err) {
-    console.error('Error sending email: ', err);
+    console.error('Error sending email:', err);
     res.status(500).json({ message: 'Failed to send email', error: err.message });
   }
 });
@@ -1530,29 +1555,51 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
   const { userids } = req.body;
   const { reservationid } = req.params;
 
-  try {
-    const result = await pool.query(`
-      SELECT * 
-      FROM users 
-      WHERE userid IN (${userids.join(', ')})
-    `);
+  if (!userids || userids.length === 0) {
+    return res.status(400).json({ message: 'User IDs are required' });
+  }
 
-    if(result.recordset.length === 0) {
+  try {
+    // Fetch user emails
+    const userResult = await pool.query(
+      `SELECT uemail FROM users WHERE userid = ANY($1::int[])`,
+      [userids]
+    );
+
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ message: 'No users found' });
     }
 
-    const selectedEmails = result.recordset.map(record => record.uemail);
+    const selectedEmails = userResult.rows.map(record => record.uemail);
 
-    const reservationResult = await pool.request()
-      .input('reservationid', sql.Int, reservationid)
-      .query(`SELECT p.propertyAddress, r.propertyidcheckindatetime, r.checkoutdatetime, rc.rclastname, rc.rctitle FROM Property p JOIN Reservation r ON p.propertyid = r.propertyid JOIN Reservation_Customer_Details rc ON rc.rcID = r.rcID WHERE reservationid = @reservationid`);
+    // Fetch reservation and customer details
+    const reservationResult = await pool.query(
+      `SELECT 
+        p.propertyaddress AS "reservationProperty", 
+        r.propertyidcheckindatetime AS "reservationCheckInDate", 
+        r.checkoutdatetime AS "reservationCheckOutDate", 
+        rc.rclastname AS "customerLastName", 
+        rc.rctitle AS "customerTitle"
+      FROM property p
+      JOIN reservation r ON p.propertyid = r.propertyid
+      JOIN reservation_customer_details rc ON rc.rcID = r.rcID
+      WHERE r.reservationid = $1`,
+      [reservationid]
+    );
 
-    if(reservationResult.recordset.length === 0) {
+    if (reservationResult.rows.length === 0) {
       return res.status(404).json({ message: 'No reservation or customer found' });
     }
 
-    const { propertyAddress: reservationProperty, propertyidcheckindatetime: reservationCheckInDate, checkoutdatetime: reservationCheckOutDate, rclastname: customerLastName, rctitle: customerTitle } = reservationResult.recordset[0];
+    const { 
+      reservationProperty, 
+      reservationCheckInDate, 
+      reservationCheckOutDate, 
+      customerLastName, 
+      customerTitle 
+    } = reservationResult.rows[0];
 
+    // Email configuration
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -1566,25 +1613,26 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
       to: selectedEmails,
       subject: 'Suggestion Available',
       html: `
-      <h1><b>Dear Operators,</b></h1><hr/>
-      <p>Reservation of customer <b>${customerTitle} ${customerLastName}</b> is now open for suggestion with the following details:</p>
-      <p><b>Property Name:</b> ${reservationProperty}</p>
-      <p><b>Check In Date:</b> ${reservationCheckInDate}</p>
-      <p><b>Check Out Date:</b> ${reservationCheckOutDate}</p>
-      <br/>
-      <p>Please kindly click the button below to pick up the "Suggest" opportunity with first come first serve basis</p>
-      <p>You may <b>ignore</b> this message if <b>not interested</b></p>
-      <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pick Up</a>
+        <h1><b>Dear Operators,</b></h1><hr/>
+        <p>Reservation of customer <b>${customerTitle} ${customerLastName}</b> is now open for suggestion with the following details:</p>
+        <p><b>Property Name:</b> ${reservationProperty}</p>
+        <p><b>Check In Date:</b> ${reservationCheckInDate}</p>
+        <p><b>Check Out Date:</b> ${reservationCheckOutDate}</p>
+        <br/>
+        <p>Please kindly click the button below to pick up the "Suggest" opportunity on a first-come, first-served basis.</p>
+        <p>You may <b>ignore</b> this message if <b>not interested</b>.</p>
+        <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pick Up</a>
       `,
     };
 
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Email Sent Successfully' })
+    res.status(200).json({ message: 'Email Sent Successfully' });
+
   } catch (err) {
     console.error('Error sending email: ', err);
     res.status(500).json({ message: 'Failed to send email', error: err.message });
   }
-})
+});
 
 //Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
@@ -1961,9 +2009,14 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
 
   try {
     // Delete reservation from the Reservation table
-    await pool.request()
-      .input('reservationid', sql.Int, reservationid)
-      .query(`DELETE FROM Reservation WHERE reservationid = @reservationid`);
+    const result = await pool.query(
+      `DELETE FROM reservation WHERE reservationid = $1`, 
+      [reservationid]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Reservation not found' });
+    }
 
     res.status(200).json({ message: 'Reservation removed successfully' });
   } catch (err) {
@@ -1977,29 +2030,37 @@ app.get('/operatorProperties/:userid', async (req, res) => {
   const { userid } = req.params;
 
   if (!userid) {
-    return res.status(400).json({ message: 'userid of Operator is not found' });
+    return res.status(400).json({ message: 'User ID of Operator is not found' });
   }
 
   try {
-    const result = await pool.request()
-      .input('userid', sql.Int, userid)
-      .query(`SELECT * FROM Property WHERE userid = @userid AND propertyStatus = 'Available'`);
+    const result = await pool.query(
+      `SELECT * FROM property WHERE userid = $1 AND propertystatus = 'Available'`, 
+      [userid]
+    );
 
-    if (result.recordset.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'No properties found for this Operator' });
     }
 
-    const propertiesWithSeparatedImages = result.recordset.map(property => ({
+    const propertiesWithSeparatedImages = result.rows.map(property => ({
       ...property,
-      images: property.propertyImage ? property.propertyImage.split(',') : [],
+      images: property.propertyimage ? property.propertyimage.split(',') : [],
     }));
 
-    res.status(200).json({ status: 'success', message: 'Properties Retrieved Successfully', data: propertiesWithSeparatedImages, });
+    res.status(200).json({
+      status: 'success',
+      message: 'Properties Retrieved Successfully',
+      data: propertiesWithSeparatedImages,
+    });
   } catch (err) {
     console.error('Error retrieving properties: ', err);
-    res.status(500).json({ message: 'An error occurred while retrieving properties', error: err.message });
+    res.status(500).json({
+      message: 'An error occurred while retrieving properties',
+      error: err.message,
+    });
   }
-})
+});
 
 // Get user information
 app.get('/getUserInfo/:userid', async (req, res) => {
@@ -2034,31 +2095,33 @@ app.get('/getUserInfo/:userid', async (req, res) => {
 });
 
 //Forget Password
+// Forget Password
 app.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
 
   try {
-    const userResult = await pool.request()
-      .input('email', sql.VarChar, email)
-      .query('SELECT userid, username FROM users WHERE uemail = @email');
+    // Check if the email exists in the database
+    const userResult = await pool.query(
+      'SELECT userid, username FROM users WHERE uemail = $1', 
+      [email]
+    );
 
-    if (userResult.recordset.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ message: 'Email not registered' });
     }
 
-    const { userid, username } = userResult.recordset[0];
+    const { userid, username } = userResult.rows[0];
 
+    // Generate a new random password
     const newPassword = Math.random().toString(36).slice(-8);
 
-    await pool.request()
-      .input('userid', sql.Int, userid)
-      .input('password', sql.VarChar, newPassword)
-      .query(`
-        UPDATE users 
-        SET password = @password
-        WHERE userid = @userid
-      `);
+    // Update user's password in the database
+    await pool.query(
+      'UPDATE users SET password = $1 WHERE userid = $2',
+      [newPassword, userid]
+    );
 
+    // Email configuration
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -2077,7 +2140,7 @@ app.post('/forgot-password', async (req, res) => {
         <h2 style="color: #4CAF50; font-size: 24px;">${newPassword}</h2>
         <p>Please use this password to log in and immediately change your password.</p>
         <p>If you did not request a password reset, please contact the administrator immediately.</p>
-      `
+      `,
     };
 
     await transporter.sendMail(mailOptions);
@@ -2085,7 +2148,7 @@ app.post('/forgot-password', async (req, res) => {
 
   } catch (err) {
     console.error('Reset password error:', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', details: err.message });
   }
 });
 
