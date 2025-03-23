@@ -1156,6 +1156,7 @@ app.post("/contact_us", async (req, res) => {
 // Send Booking Request Message To Administrator Or Moderator
 app.post('/requestBooking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
+  console.log("here is " + reservationid);
   let client;
 
   try {
