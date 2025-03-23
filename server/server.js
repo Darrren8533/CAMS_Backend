@@ -40,8 +40,8 @@ app.get('/', async(req, res) => {
     res.status(500).json({ message: 'Server error', success: false });
   } finally {
     if (client) {
-      client.release();
-    }
+    client.release();
+  }
   }
 });
 
@@ -116,12 +116,12 @@ app.post('/register', async (req, res) => {
     const checkResult = await client.query(checkUserQuery);
     
     if (checkResult.rows.length > 0) {
-      return res.status(409).json({ message: 'Username or email already exists', success: false });
-    }
-    
+          return res.status(409).json({ message: 'Username or email already exists', success: false });
+      }
+
     // 获取默认头像
-    const defaultAvatarBase64 = await getDefaultAvatarBase64();
-    
+      const defaultAvatarBase64 = await getDefaultAvatarBase64();
+
     // 插入新用户
     const insertUserQuery = {
       text: `
@@ -146,12 +146,12 @@ app.post('/register', async (req, res) => {
     };
     
     await client.query(insertUserQuery);
-    
-    res.status(201).json({ message: 'User registered successfully', success: true });
+
+      res.status(201).json({ message: 'User registered successfully', success: true });
   } catch (err) {
     console.error('Error during registration:', err.message);
     console.error(err.stack);
-    res.status(500).json({ message: 'Server error', success: false });
+      res.status(500).json({ message: 'Server error', success: false });
   } finally {
     
     if (client) {
@@ -213,18 +213,18 @@ app.post("/google-login", async (req, res) => {
   const { token } = req.body;
 
   try {
-    // Get user info from Google
-    const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      // Get user info from Google
+      const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
       headers: { Authorization: `Bearer ${token}` },
-    });
-    const googleUser = await response.json();
+      });
+      const googleUser = await response.json();
 
-    if (!googleUser.email) {
-      return res.status(401).json({ success: false, message: "Invalid Google token" });
-    }
+      if (!googleUser.email) {
+          return res.status(401).json({ success: false, message: "Invalid Google token" });
+      }
 
-    const { email, given_name, family_name, picture } = googleUser;
-    console.log("Google User Data:", googleUser);
+      const { email, given_name, family_name, picture } = googleUser;
+      console.log("Google User Data:", googleUser); 
 
     const client = await pool.connect();
 
@@ -237,25 +237,25 @@ app.post("/google-login", async (req, res) => {
 
       let username;
       if (result.rows.length > 0) {
-        // Existing user, update login status
+          // Existing user, update login status
         const { userid, usergroup, uactivation, username: existingUsername } = result.rows[0];
-        username = existingUsername;
+          username = existingUsername;
 
         await client.query("UPDATE users SET ustatus = 'login' WHERE uemail = $1", [email]);
 
-        return res.status(200).json({
-          success: true,
-          message: "Google Login Successful",
+          return res.status(200).json({
+              success: true,
+              message: "Google Login Successful",
           userid: userid,
           usergroup: usergroup,
           uactivation: uactivation,
           username,
-        });
+          });
       } else {
-        const randomSixDigits = generateRandomSixDigits();
+          const randomSixDigits = generateRandomSixDigits();
         username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
 
-        // Insert new Google user
+          // Insert new Google user
         const insertResult = await client.query(
           `INSERT INTO users (uemail, ufirstname, ulastname, uimage, utitle, ustatus, usergroup, uactivation, username)
            VALUES ($1, $2, $3, $4, 'Mr.', 'login', 'Customer', 'Active', $5) 
@@ -265,9 +265,9 @@ app.post("/google-login", async (req, res) => {
 
         const newuserid = insertResult.rows[0].userid;
 
-        return res.status(201).json({
-          success: true,
-          message: "Google Login Successful, new user created",
+          return res.status(201).json({
+              success: true,
+              message: "Google Login Successful, new user created",
           userid: newuserid,
           usergroup: "Customer",
           uactivation: "Active",
@@ -276,10 +276,10 @@ app.post("/google-login", async (req, res) => {
       }
     } finally {
       client.release();
-    }
+      }
   } catch (error) {
-    console.error("Google Login Error:", error);
-    return res.status(500).json({ success: false, message: "Google Login Failed" });
+      console.error("Google Login Error:", error);
+      return res.status(500).json({ success: false, message: "Google Login Failed" });
   }
 });
 
@@ -328,7 +328,7 @@ app.get('/users/customers', async (req, res) => {
     if (client) {
       client.release();
     }
-  }
+  } 
 });
 
 // Fetch list of owners
@@ -476,17 +476,17 @@ app.put('/users/updateUser/:userid', async (req, res) => {
 
       await pool.query(query, values);
 
-      console.log(`
+          console.log(`
       UPDATE users
       SET ufirstname = '${firstName}', 
           ulastname = '${lastName}', 
-          username = '${username}', 
+        username = '${username}', 
           uemail = '${email}',
           uphoneno = '${phoneNo}',
           ucountry = '${country}',
           uzipcode = '${zipCode}'
       WHERE userid = '${userid}'
-      `);
+`);
 
       res.status(200).json({ message: 'User updated successfully' });
   } catch (err) {
@@ -500,7 +500,7 @@ app.put('/users/updateUser/:userid', async (req, res) => {
 app.delete('/users/removeUser/:userid', async (req, res) => {
   const { userid } = req.params;
   let client;
-  
+
   try {
     client = await pool.connect();
     
@@ -513,13 +513,13 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
     if (userCheck.rows.length === 0) {
       return res.status(404).json({ message: 'User not found', success: false });
     }
-    
+
     // Delete the user
     await client.query(
       'DELETE FROM users WHERE userid = $1',
       [userid]
     );
-    
+
     res.status(200).json({ message: 'User removed successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);
@@ -772,7 +772,7 @@ app.get('/product', async (req, res) => {
                   property.propertyimage ? property.propertyimage.substring(0, 50) + '...' : 'No image');
       
       const processedProperty = {
-        ...property,
+      ...property,
         propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
       };
       
@@ -793,7 +793,7 @@ app.get('/product', async (req, res) => {
       }
       console.log(JSON.stringify(sampleProperty, null, 2));
     }
-    
+
     res.status(200).json(properties);
   } catch (err) {
     console.error('Error fetching properties: ', err);
@@ -900,7 +900,7 @@ app.get('/propertiesListingTable', async (req, res) => {
     if (client) {
       client.release();
     }
-  }
+  } 
 });
 
 // Update an existing property listing by property ID
@@ -1121,25 +1121,25 @@ app.post("/contact_us", async (req, res) => {
   try {
     client = await pool.connect(); 
 
-    const transporter = nodemailer.createTransport({
+  const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: {
+    auth: {
         user: "omg71933@gmail.com",
         pass: "eyiwkkdsklngzzzj",
-      },
-    });
+    },
+  });
 
-    const mailOptions = {
+  const mailOptions = {
       from: "omg71933@gmail.com",
       to: "omg71933@gmail.com",
-      subject: `Message from ${name}`,
-      html: `
-      <h1>New Message from ${name}</h1>
-      <p><strong>Message:</strong></p>
-      <p>${message}</p>
-      <p><strong>Email:</strong> ${email}</p>`,
-      replyTo: email,
-    };
+    subject: `Message from ${name}`,
+    html: `
+    <h1>New Message from ${name}</h1>
+    <p><strong>Message:</strong></p>
+    <p>${message}</p>
+    <p><strong>Email:</strong> ${email}</p>`,
+    replyTo: email, 
+  };
 
     await transporter.sendMail(mailOptions);
     res.status(200).json({ message: "Email sent successfully" });
@@ -1742,7 +1742,7 @@ app.get('/cart', async (req, res) => {
         r.checkindatetime,
         r.checkoutdatetime,
         r.reservationblocktime,
-        r.request,
+          r.request,
         r.totalprice,
         r.reservationstatus,
         r.rcid,
@@ -1751,7 +1751,7 @@ app.get('/cart', async (req, res) => {
         reservation r
       JOIN 
         properties p ON r.propertyid = p.propertyid
-      WHERE 
+        WHERE 
         r.userid = $1`,
       [userid]
     );
@@ -1781,75 +1781,100 @@ app.get('/reservationTable', async (req, res) => {
     return res.status(400).json({ error: 'Username is required' });
   }
 
+  let client;
   try {
-    // Fetch userid and usergroup from the users table
-    const userResult = await pool
-      .request()
-      .input('username', sql.VarChar, username)
-      .query(`
-        SELECT userid, usergroup 
-        FROM users 
-        WHERE username = @username
-      `);
+    client = await pool.connect();
+    
+    // 查询用户信息
+    const userResult = await client.query(
+      'SELECT userid, usergroup FROM users WHERE username = $1',
+      [username]
+    );
 
-    if (userResult.recordset.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const userid = userResult.recordset[0].userid;
-    const usergroup = userResult.recordset[0].usergroup;
+    const userid = userResult.rows[0].userid;
+    const usergroup = userResult.rows[0].usergroup;
 
-    // Base query for fetching reservations
-    let query = `
-      SELECT 
-        r.reservationid,
-        r.propertyid,
-        p.propertyAddress, 
-        p.propertyImage,
-        p.userid,
-        r.propertyidcheckindatetime,
-        r.checkoutdatetime,
-        r.reservationblocktime,
-        r.request,
-        r.totalprice,
-        r.reservationStatus,
-        r.rcID,
-        rc.rcfirstname,
-        rc.rclastname,
-        rc.rcemail,
-        rc.rcphoneno,
-        rc.rctitle
-      FROM 
-        Reservation r
-      JOIN 
-        Properties p ON r.propertyid = p.propertyid
-      JOIN 
-        Reservation_Customer_Details rc ON r.rcID = rc.rcID
-    `;
+    let query;
 
-    // Apply filter for moderators
     if (usergroup === 'Moderator') {
-      query += ` WHERE p.userid = @userid AND r.reservationStatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')`;
+      // If user is a Moderator, fetch properties created by that user only
+      query = `
+      SELECT 
+          r.reservationid,
+          r.propertyid,
+          p.propertyaddress, 
+          p.propertyimage,
+          p.userid,
+          r.checkindatetime,
+          r.checkoutdatetime,
+          r.reservationblocktime,
+        r.request,
+          r.totalprice,
+          r.reservationstatus,
+          r.rcid,
+          rc.rcfirstname,
+          rc.rclastname,
+          rc.rcemail,
+          rc.rcphoneno,
+          rc.rctitle
+        FROM reservation r
+        JOIN properties p ON r.propertyid = p.propertyid
+        JOIN reservation_customer_details rc ON r.rcid = rc.rcid
+        WHERE p.userid = $1
+        AND r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
+      `;
     } else {
-      query += ` WHERE r.reservationStatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')`;
+      // 如果是管理员，查看所有预订
+      query = `
+        SELECT 
+          r.reservationid,
+          r.propertyid,
+          p.propertyaddress, 
+          p.propertyimage,
+          p.userid,
+          r.checkindatetime,
+          r.checkoutdatetime,
+          r.reservationblocktime,
+          r.request,
+          r.totalprice,
+          r.reservationstatus,
+          r.rcid,
+          rc.rcfirstname,
+          rc.rclastname,
+          rc.rcemail,
+          rc.rcphoneno,
+          rc.rctitle
+        FROM reservation r
+        JOIN properties p ON r.propertyid = p.propertyid
+        JOIN reservation_customer_details rc ON r.rcid = rc.rcid
+        WHERE r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
+      `;
     }
 
-    // Execute the query
-    const result = await pool
-      .request()
-      .input('userid', sql.Int, userid)
-      .query(query);
+    // 执行查询
+    const result = await client.query(
+      query,
+      usergroup === 'Moderator' ? [userid] : []
+    );
 
-    // Process reservations to split propertyImage into an array
-    const reservations = result.recordset.map(reservation => ({
+    // 处理预订数据，分割属性图片
+    const reservations = result.rows.map(reservation => ({
       ...reservation,
-      propertyImage: reservation.propertyImage ? reservation.propertyImage.split(',') : []
+      propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
     }));
 
     res.status(200).json({ reservations });
   } catch (err) {
     console.error('Error fetching reservation data for reservation table:', err);
     res.status(500).json({ message: 'Internal Server Error', details: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
@@ -2112,10 +2137,10 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
       return res.status(404).json({ message: 'User not found or no changes made.', success: false });
     }
 
-    res.status(200).json({ message: 'Profile updated successfully.', success: true });
-  } catch (err) {
+  res.status(200).json({ message: 'Profile updated successfully.', success: true });
+} catch (err) {
     console.error('Error updating user profile:', err);
-    res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
+  res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
   } finally {
     if (client) {
       client.release();
@@ -2133,7 +2158,7 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
   }
 
   if (!uimage) {
-    return res.status(400).json({ message: 'No image data provided.' });
+      return res.status(400).json({ message: 'No image data provided.' });
   }
 
   try {
