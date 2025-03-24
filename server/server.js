@@ -2096,14 +2096,16 @@ app.get('/getUserInfo/:userid', async (req, res) => {
   }
 });
 
-//Forget Password
 // Forget Password
 app.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
 
+  let client;
   try {
+    client = await pool.connect();
+
     // Check if the email exists in the database
-    const userResult = await pool.query(
+    const userResult = await client.query(
       'SELECT userid, username FROM users WHERE uemail = $1', 
       [email]
     );
@@ -2117,9 +2119,9 @@ app.post('/forgot-password', async (req, res) => {
     // Generate a new random password
     const newPassword = Math.random().toString(36).slice(-8);
 
-    // Update user's password in the database
-    await pool.query(
-      'UPDATE users SET password = $1 WHERE userid = $2',
+
+    await client.query(
+      'UPDATE users SET upassword = $1 WHERE userid = $2',
       [newPassword, userid]
     );
 
@@ -2151,8 +2153,13 @@ app.post('/forgot-password', async (req, res) => {
   } catch (err) {
     console.error('Reset password error:', err);
     res.status(500).json({ message: 'Server error', details: err.message });
+  } finally {
+    if (client) {
+      client.release(); 
+    }
   }
 });
+
 
 // Avatar 
 const getDefaultAvatarBase64 = () => {
