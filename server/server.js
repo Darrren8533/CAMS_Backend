@@ -1,7 +1,6 @@
 const express = require('express');
 const sql = require('mssql');
 const cors = require('cors');
-const app = express();
 const multer = require('multer');
 const nodemailer = require('nodemailer');
 const { OAuth2Client } = require("google-auth-library");
@@ -45,10 +44,7 @@ app.get('/', async(req, res) => {
 });
 
 app.use(express.json());
-
-app.use(cors({
-  origin: 'https://cams-fronted.vercel.app'
-}));
+app.use(cors());
 
 // Set up multer for file uploads with memory storage and size limits
 const storage = multer.memoryStorage();
