@@ -2249,6 +2249,7 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
   }
 });
 
+
 // Upload user avatar
 app.post('/users/uploadAvatar/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -2262,7 +2263,7 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
     return res.status(400).json({ message: 'No image data provided.' });
   }
 
-  let client; 
+  let client;
 
   try {
     client = await pool.connect();
@@ -2276,9 +2277,8 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
 
     const imageBuffer = Buffer.from(uimage, 'base64');
 
-
     const result = await client.query(
-      `UPDATE users SET uimage = $1 WHERE userid = $2 RETURNING userid, encode(uimage, 'base64') AS uimage`,
+      `UPDATE users SET uimage = $1 WHERE userid = $2 RETURNING userid, uimage`,
       [imageBuffer, userid]
     );
 
@@ -2301,7 +2301,6 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
     }
   }
 });
-
 
 
 // Start the server
