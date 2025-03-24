@@ -1039,7 +1039,7 @@ app.delete('/propertiesListing/:propertyid', async (req, res) => {
 
     // Check if the property exists
     const propertyCheck = await client.query(
-      'SELECT propertyid FROM "Properties" WHERE propertyid = $1',
+      'SELECT propertyid FROM properties WHERE propertyid = $1',
       [propertyid]
     );
 
@@ -1049,7 +1049,7 @@ app.delete('/propertiesListing/:propertyid', async (req, res) => {
 
     // Delete the property from the database
     await client.query(
-      'DELETE FROM "Properties" WHERE propertyid = $1',
+      'DELETE FROM properties WHERE propertyid = $1',
       [propertyid]
     );
 
