@@ -8,6 +8,7 @@ const client = new OAuth2Client("959435224005-dd10ungqndjhjki131j8t6ede5qav4up.a
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
+const sharp = require('sharp');
 
 const {PGHOST, PGDATABASE, PGUSER, PGPASSWORD} = process.env;
 const port = 5432;
@@ -594,35 +595,57 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       nearbyLocation,
       facilities
   } = req.body;
-
   if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'Please upload at least 5 property images.' });
   }
-
   let client;
   try {
       client = await pool.connect();
       await client.query('BEGIN');
-
       // Fetch user ID and userGroup for property owner
       const userResult = await client.query(
           'SELECT userid, usergroup FROM users WHERE username = $1',
           [username]
       );
-
       if (userResult.rows.length === 0) {
           return res.status(404).json({ error: 'User not found' });
       }
-
       const { userid, usergroup } = userResult.rows[0];
-
       // Determine propertyStatus based on userGroup
       const propertyStatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
-
-      // Convert images to base64 and concatenate them
-      const base64Images = req.files.map(file => file.buffer.toString('base64'));
+      
+      // REPLACE THIS SECTION:
+      // const base64Images = req.files.map(file => file.buffer.toString('base64'));
+      // const concatenatedImages = base64Images.join(',');
+      
+      // WITH THIS RESIZING CODE:
+      const base64Images = await Promise.all(req.files.map(async (file) => {
+        try {
+          // Resize image to max dimensions while preserving aspect ratio
+          const resizedImageBuffer = await sharp(file.buffer)
+            .resize({
+              width: 800,
+              height: 600,
+              fit: 'inside', // preserves aspect ratio
+              withoutEnlargement: true // don't enlarge images smaller than these dimensions
+            })
+            .jpeg({ 
+              quality: 80, // compress quality (0-100)
+              progressive: true // create progressive JPEG for better loading
+            })
+            .toBuffer();
+            
+          return resizedImageBuffer.toString('base64');
+        } catch (err) {
+          console.error('Image processing error:', err);
+          // Return original image as fallback if processing fails
+          return file.buffer.toString('base64');
+        }
+      }));
+      
       const concatenatedImages = base64Images.join(',');
-
+      
+      // Continue with your existing code
       // Insert rate
       const rateResult = await client.query(
           `INSERT INTO rate (rateamount, ratetype, period)
@@ -631,7 +654,6 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           [propertyPrice, "DefaultType", "DefaultPeriod"]
       );
       const rateID = rateResult.rows[0].rateid;
-
       // 先检查集群是否存在
       let clusterID;
       const existingCluster = await client.query(
@@ -651,14 +673,12 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           );
           clusterID = clusterResult.rows[0].clusterid;
       }
-
       // 同样检查类别是否存在
       let categoryID;
       const existingCategory = await client.query(
           'SELECT categoryid FROM categories WHERE categoryname = $1',
           [categoryName]
       );
-
       if (existingCategory.rows.length > 0) {
           categoryID = existingCategory.rows[0].categoryid;
       } else {
@@ -671,7 +691,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           );
           categoryID = categoryResult.rows[0].categoryid;
       }
-
+    
       // Insert property
       const propertyListingResult = await client.query(
           `INSERT INTO properties (
