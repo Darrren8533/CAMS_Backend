@@ -1310,11 +1310,13 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
     // Fetch property details for suggestion
     const propertyResult = await pool.query(
       `SELECT propertyaddress AS "suggestpropertyAddress",
-              propertyprice AS "suggestPropertyPrice",
+              r.rateamount AS "suggestPropertyPrice",
               nearbylocation AS "suggestPropertyLocation",
               propertybedtype AS "suggestPropertyBedType",
               propertyguestpaxno AS "suggestPropertyGuestPaxNo"
-       FROM property WHERE propertyid = $1`,
+       FROM property 
+       JOIN rate r ON p.rateid = r.rateid
+       WHERE propertyid = $1`,
       [propertyid]
     );
 
@@ -1329,7 +1331,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
       `SELECT rc.rclastname AS "customerLastName",
               rc.rcemail AS "customerEmail",
               rc.rctitle AS "customerTitle",
-              p.propertypddress AS "reservationProperty",
+              p.propertyaddress AS "reservationProperty",
               r.propertyidcheckindatetime AS "reservationCheckInDate",
               r.checkoutdatetime AS "reservationCheckOutDate"
        FROM reservation r
