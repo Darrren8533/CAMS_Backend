@@ -2274,12 +2274,9 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-
-    const imageBuffer = Buffer.from(uimage, 'base64');
-
     const result = await client.query(
       `UPDATE users SET uimage = $1 WHERE userid = $2 RETURNING userid, uimage`,
-      [imageBuffer, userid]
+      [uimage, userid]
     );
 
     if (result.rows.length === 0) {
@@ -2289,7 +2286,7 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Avatar uploaded successfully',
-      data: result.rows[0],
+      data: result.rows[0], 
     });
 
   } catch (err) {
