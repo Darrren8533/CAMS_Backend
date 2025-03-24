@@ -2121,7 +2121,7 @@ app.post('/forgot-password', async (req, res) => {
 
 
     await client.query(
-      'UPDATE users SET upassword = $1 WHERE userid = $2',
+      'UPDATE users SET password = $1 WHERE userid = $2',
       [newPassword, userid]
     );
 
