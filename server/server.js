@@ -1,6 +1,7 @@
 const express = require('express');
 const sql = require('mssql');
 const cors = require('cors');
+const app = express();
 const multer = require('multer');
 const nodemailer = require('nodemailer');
 const { OAuth2Client } = require("google-auth-library");
@@ -17,11 +18,10 @@ const pool = new Pool({
   database: PGDATABASE,
   user: PGUSER,
   password: PGPASSWORD,
-  port: 5432,  // 修正为 PostgreSQL 默认端口
+  port: 5432,
   ssl: {
     require: true,
   },
-  // 添加超时设置
   connectionTimeoutMillis: 5000,
   query_timeout: 5000
 })
@@ -33,7 +33,6 @@ app.get('/', async(req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query("SELECT * FROM users");
-    // const result = await pool.connect.query("SELECT * FROM users");
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -46,7 +45,10 @@ app.get('/', async(req, res) => {
 });
 
 app.use(express.json());
-app.use(cors());
+
+app.use(cors({
+  origin: 'https://cams-fronted.vercel.app'
+}));
 
 // Set up multer for file uploads with memory storage and size limits
 const storage = multer.memoryStorage();
@@ -57,30 +59,6 @@ const upload = multer({
       fileSize: 25 * 1024 * 1024  
   }
 });
-
-//Database configuration
-// const dbConfig = {
-//   user: 'sa',
-//   password: 'CAMS',
-//   server: 'WILSON1684',
-//   database: 'CAMS_DB',
-//   options: {
-//     encrypt: false,
-//     enableArithAbort: true,
-//   },
-// };
-
-// Initialize database connection pool
-// let pool;
-// const initDbConnection = async () => {
-//   try {
-//     pool = await sql.connect(dbConfig);
-//     console.log('Database connected successfully');
-//   } catch (err) {
-//     console.error('Error connecting to the database:', err);
-//   }
-// };
-// initDbConnection();
 
 // Close database connection pool on server shutdown
 process.on('SIGINT', async () => {
@@ -104,7 +82,7 @@ app.post('/register', async (req, res) => {
   
   try {
     client = await pool.connect();
-    // 检查用户名或邮箱是否已存在
+
     const checkUserQuery = {
       text: `
         SELECT username, uemail FROM users
@@ -119,10 +97,8 @@ app.post('/register', async (req, res) => {
           return res.status(409).json({ message: 'Username or email already exists', success: false });
       }
 
-    // 获取默认头像
       const defaultAvatarBase64 = await getDefaultAvatarBase64();
 
-    // 插入新用户
     const insertUserQuery = {
       text: `
         INSERT INTO users (
@@ -140,8 +116,8 @@ app.post('/register', async (req, res) => {
         'registered',
         'Active',
         defaultAvatarBase64,
-        firstName, // 添加 firstName
-        lastName   // 添加 lastName
+        firstName,
+        lastName  
       ]
     };
     
@@ -168,7 +144,6 @@ app.post('/login', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // 使用 PostgreSQL 语法
     const result = await client.query(
       `SELECT userid, usergroup, uactivation 
        FROM users 
@@ -180,7 +155,6 @@ app.post('/login', async (req, res) => {
     if (result.rows.length > 0) {
       const { userid, usergroup, uactivation } = result.rows[0];
 
-      // 更新用户状态
       await client.query(
         `UPDATE users
          SET ustatus = 'login' 
