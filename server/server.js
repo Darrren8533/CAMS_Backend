@@ -894,96 +894,96 @@ app.get('/propertiesListingTable', async (req, res) => {
 });
 
 // Update an existing property listing by property ID
-app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), async (req, res) => {
-  const { propertyid } = req.params;
-  const {
-      propertyAddress, propertyPrice, propertyDescription, nearbyLocation,
-      propertyBedType, propertyGuestPaxNo, clusterName, categoryName
-  } = req.body;
-
-  const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
-
-  let client;
-  try {
-      client = await pool.connect();
-
-      // Fetch the current status of the property
-      const propertyResult = await client.query(
-          'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid FROM properties WHERE propertyid = $1',
-          [propertyid]
-      );
-
-      if (propertyResult.rows.length === 0) {
-          return res.status(404).json({ error: 'Property not found' });
-      }
-
-      let existingImages = propertyResult.rows[0].propertyimage
-          ? propertyResult.rows[0].propertyimage.split(',')
-          : [];
-
-      // Filter out removed images
-      existingImages = existingImages.filter(image => !removedImages.includes(image));
-
-      // Add new uploaded images if any
-      if (req.files && req.files.length > 0) {
-          const newBase64Images = req.files.map(file => file.buffer.toString('base64'));
-          existingImages = [...existingImages, ...newBase64Images];
-      }
-
-      const concatenatedImages = existingImages.join(',');
-
-      // Update the property details
-      await client.query(
-          `UPDATE properties 
-           SET propertydescription = $1, 
-               propertyaddress = $2, 
-               nearbylocation = $3, 
-               propertybedtype = $4, 
-               propertyguestpaxno = $5, 
-               propertyimage = $6 
-           WHERE propertyid = $7`,
-          [
-              propertyDescription,
-              propertyAddress,
-              nearbyLocation,
-              propertyBedType,
-              propertyGuestPaxNo,
-              concatenatedImages,
-              propertyid
-          ]
-      );
-
-      await client.query(
-          `UPDATE rate 
-           SET rateamount = $1 
-           WHERE rateid = $2`,
-          [propertyPrice, propertyResult.rows[0].rateid]
-      );
-
-      await client.query(
-          `UPDATE clusters 
-           SET clustername = $1 
-           WHERE clusterid = $2`,
-          [clusterName, propertyResult.rows[0].clusterid]
-      );
-
-      await client.query(
-          `UPDATE categories 
-           SET categoryname = $1 
-           WHERE categoryid = $2`,
-          [categoryName, propertyResult.rows[0].categoryid]
-      );
-
-      res.status(200).json({ message: 'Property updated successfully' });
-  } catch (err) {
-      console.error('Error updating property:', err);
-      res.status(500).json({ error: 'Internal Server Error', details: err.message });
-  } finally {
-      if (client) {
-        client.release(); 
-      }
-  }
-});
+app.put('/propertiesListing/:propertyid', upload.array('propertyimage', 10), async (req, res) => {
+    const { propertyid } = req.params;
+    const {
+        propertyaddress, propertyprice, propertydescription, nearbylocation,
+        propertybedtype, propertyguestpaxno, clustername, categoryname
+    } = req.body;
+  
+    const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
+  
+    let client;
+    try {
+        client = await pool.connect();
+  
+        // Fetch the current status of the property
+        const propertyResult = await client.query(
+            'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid FROM properties WHERE propertyid = $1',
+            [propertyid]
+        );
+  
+        if (propertyResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Property not found' });
+        }
+  
+        let existingImages = propertyResult.rows[0].propertyimage
+            ? propertyResult.rows[0].propertyimage.split(',')
+            : [];
+  
+        // Filter out removed images
+        existingImages = existingImages.filter(image => !removedImages.includes(image));
+  
+        // Add new uploaded images if any
+        if (req.files && req.files.length > 0) {
+            const newBase64Images = req.files.map(file => file.buffer.toString('base64'));
+            existingImages = [...existingImages, ...newBase64Images];
+        }
+  
+        const concatenatedImages = existingImages.join(',');
+  
+        // Update the property details
+        await client.query(
+            `UPDATE properties 
+             SET propertydescription = $1, 
+                 propertyaddress = $2, 
+                 nearbylocation = $3, 
+                 propertybedtype = $4, 
+                 propertyguestpaxno = $5, 
+                 propertyimage = $6 
+             WHERE propertyid = $7`,
+            [
+                propertydescription,
+                propertyaddress,
+                nearbylocation,
+                propertybedtype,
+                propertyguestpaxno,
+                concatenatedImages,
+                propertyid
+            ]
+        );
+  
+        await client.query(
+            `UPDATE rate 
+             SET rateamount = $1 
+             WHERE rateid = $2`,
+            [propertyprice, propertyResult.rows[0].rateid]
+        );
+  
+        await client.query(
+            `UPDATE clusters 
+             SET clustername = $1 
+             WHERE clusterid = $2`,
+            [clustername, propertyResult.rows[0].clusterid]
+        );
+  
+        await client.query(
+            `UPDATE categories 
+             SET categoryname = $1 
+             WHERE categoryid = $2`,
+            [categoryname, propertyResult.rows[0].categoryid]
+        );
+  
+        res.status(200).json({ message: 'Property updated successfully' });
+    } catch (err) {
+        console.error('Error updating property:', err);
+        res.status(500).json({ error: 'Internal Server Error', details: err.message });
+    } finally {
+        if (client) {
+          client.release(); 
+        }
+    }
+  });
 
 // Update Property Status API
 app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
