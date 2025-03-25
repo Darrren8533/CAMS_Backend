@@ -48,10 +48,10 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fieldSize: 25 * 1024 * 1024, 
-    fileSize: 25 * 1024 * 1024  
+      fieldSize: 25 * 1024 * 1024, 
+      fileSize: 25 * 1024 * 1024  
   }
-}).any();
+});
 
 // Close database connection pool on server shutdown
 process.on('SIGINT', async () => {
