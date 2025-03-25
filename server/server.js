@@ -903,22 +903,22 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 
   const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
 
+  let client;
   try {
-      const pool = await sql.connect(dbConfig);
+      client = await pool.connect();
 
       // Fetch the current status of the property
-      const propertyResult = await pool.request()
-          .input('propertyid', sql.Int, propertyid)
-          .query('SELECT propertyStatus, propertyImage FROM Properties WHERE propertyid = @propertyid');
+      const propertyResult = await client.query(
+          'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid FROM properties WHERE propertyid = $1',
+          [propertyid]
+      );
 
-      if (propertyResult.recordset.length === 0) {
+      if (propertyResult.rows.length === 0) {
           return res.status(404).json({ error: 'Property not found' });
       }
 
-      const currentStatus = propertyResult.recordset[0].propertyStatus;
-
-      let existingImages = propertyResult.recordset[0].propertyImage
-          ? propertyResult.recordset[0].propertyImage.split(',')
+      let existingImages = propertyResult.rows[0].propertyimage
+          ? propertyResult.rows[0].propertyimage.split(',')
           : [];
 
       // Filter out removed images
@@ -932,58 +932,56 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 
       const concatenatedImages = existingImages.join(',');
 
-      // Update the property
-      await pool.request()
-          .input('propertyid', sql.Int, propertyid)
-          .input('propertyAddress', sql.VarChar, propertyAddress)
-          .input('nearbyLocation', sql.VarChar, nearbyLocation)
-          .input('propertyBedType', sql.VarChar, propertyBedType)
-          .input('propertyBedImage', sql.VarChar(sql.MAX), "1")
-          .input('propertyGuestPaxNo', sql.VarChar, propertyGuestPaxNo)
-          .input('propertyDescription', sql.VarChar, propertyDescription)
-          .input('propertyImage', sql.VarChar(sql.MAX), concatenatedImages)
-          .query(`
-              UPDATE Properties 
-              SET propertyDescription = @propertyDescription, 
-                  propertyAddress = @propertyAddress, 
-                  nearbyLocation = @nearbyLocation, 
-                  propertyBedType = @propertyBedType, 
-                  propertyGuestPaxNo = @propertyGuestPaxNo, 
-                  propertyImage = @propertyImage
-              WHERE propertyid = @propertyid
-          `);
+      // Update the property details
+      await client.query(
+          `UPDATE properties 
+           SET propertydescription = $1, 
+               propertyaddress = $2, 
+               nearbylocation = $3, 
+               propertybedtype = $4, 
+               propertyguestpaxno = $5, 
+               propertyimage = $6 
+           WHERE propertyid = $7`,
+          [
+              propertyDescription,
+              propertyAddress,
+              nearbyLocation,
+              propertyBedType,
+              propertyGuestPaxNo,
+              concatenatedImages,
+              propertyid
+          ]
+      );
 
-        await pool.request()
-          .input('rateID', sql.Int, rateID)
-          .input('rateAmount', sql.Decimal(18, 2), propertyPrice)
-          .query(`
-              UPDATE Rate 
-              SET rateAmount = @rateAmount
-              WHERE rateID = @rateID
-          `);
+      await client.query(
+          `UPDATE rate 
+           SET rateamount = $1 
+           WHERE rateid = $2`,
+          [propertyPrice, propertyResult.rows[0].rateid]
+      );
 
-        await pool.request()
-          .input('clusterID', sql.Int, rateID)
-          .input('clusterName', sql.VarChar, clusterName)
-          .query(`
-              UPDATE Clusters
-              SET clusterName = @clusterName
-              WHERE clusterID = @clusterID
-          `);
+      await client.query(
+          `UPDATE clusters 
+           SET clustername = $1 
+           WHERE clusterid = $2`,
+          [clusterName, propertyResult.rows[0].clusterid]
+      );
 
-        await pool.request()
-          .input('categoryID', sql.Int, rateID)
-          .input('categoryName', sql.VarChar, categoryName)
-          .query(`
-              UPDATE Categories 
-              SET categoryName = @categoryName
-              WHERE categoryID = @categoryID
-          `);
+      await client.query(
+          `UPDATE categories 
+           SET categoryname = $1 
+           WHERE categoryid = $2`,
+          [categoryName, propertyResult.rows[0].categoryid]
+      );
 
       res.status(200).json({ message: 'Property updated successfully' });
   } catch (err) {
       console.error('Error updating property:', err);
       res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  } finally {
+      if (client) {
+        client.release(); 
+      }
   }
 });
 
