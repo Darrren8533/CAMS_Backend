@@ -10,20 +10,16 @@ const path = require('path');
 const { Pool } = require('pg');
 const sharp = require('sharp');
 
-const {PGHOST, PGDATABASE, PGUSER, PGPASSWORD} = process.env;
+const connectionString = process.env.DATABASE_URL || 
+  'postgres://neondb_owner:npg_UboyFf1vh5RV@ep-wild-block-a1b1y0kt-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require';
+
 const port = 5432;
 
 const pool = new Pool({
-  host: PGHOST,
-  database: PGDATABASE,
-  user: PGUSER,
-  password: PGPASSWORD,
-  port: 5432,
+  connectionString,
   ssl: {
-    require: true,
-  },
-  connectionTimeoutMillis: 5000,
-  query_timeout: 5000
+    rejectUnauthorized: false
+  }
 })
 
 const app = express();
@@ -896,42 +892,42 @@ app.get('/propertiesListingTable', async (req, res) => {
 // Update an existing property listing by property ID
 app.put('/propertiesListing/:propertyid', upload.array('propertyimage', 10), async (req, res) => {
     const { propertyid } = req.params;
-    const {
+  const {
         propertyaddress, propertyprice, propertydescription, nearbylocation,
         propertybedtype, propertyguestpaxno, clustername, categoryname
-    } = req.body;
-  
-    const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
-  
+  } = req.body;
+
+  const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
+
     let client;
-    try {
+  try {
         client = await pool.connect();
-  
-        // Fetch the current status of the property
+
+      // Fetch the current status of the property
         const propertyResult = await client.query(
             'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid FROM properties WHERE propertyid = $1',
             [propertyid]
         );
   
         if (propertyResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Property not found' });
-        }
-  
+          return res.status(404).json({ error: 'Property not found' });
+      }
+
         let existingImages = propertyResult.rows[0].propertyimage
             ? propertyResult.rows[0].propertyimage.split(',')
-            : [];
-  
-        // Filter out removed images
-        existingImages = existingImages.filter(image => !removedImages.includes(image));
-  
-        // Add new uploaded images if any
-        if (req.files && req.files.length > 0) {
-            const newBase64Images = req.files.map(file => file.buffer.toString('base64'));
-            existingImages = [...existingImages, ...newBase64Images];
-        }
-  
-        const concatenatedImages = existingImages.join(',');
-  
+          : [];
+
+      // Filter out removed images
+      existingImages = existingImages.filter(image => !removedImages.includes(image));
+
+      // Add new uploaded images if any
+      if (req.files && req.files.length > 0) {
+          const newBase64Images = req.files.map(file => file.buffer.toString('base64'));
+          existingImages = [...existingImages, ...newBase64Images];
+      }
+
+      const concatenatedImages = existingImages.join(',');
+
         // Update the property details
         await client.query(
             `UPDATE properties 
@@ -973,11 +969,11 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyimage', 10), asy
              WHERE categoryid = $2`,
             [categoryname, propertyResult.rows[0].categoryid]
         );
-  
-        res.status(200).json({ message: 'Property updated successfully' });
-    } catch (err) {
-        console.error('Error updating property:', err);
-        res.status(500).json({ error: 'Internal Server Error', details: err.message });
+
+      res.status(200).json({ message: 'Property updated successfully' });
+  } catch (err) {
+      console.error('Error updating property:', err);
+      res.status(500).json({ error: 'Internal Server Error', details: err.message });
     } finally {
         if (client) {
           client.release(); 
@@ -1603,15 +1599,15 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
       to: selectedEmails,
       subject: 'Suggestion Available',
       html: `
-        <h1><b>Dear Operators,</b></h1><hr/>
-        <p>Reservation of customer <b>${customerTitle} ${customerLastName}</b> is now open for suggestion with the following details:</p>
-        <p><b>Property Name:</b> ${reservationProperty}</p>
-        <p><b>Check In Date:</b> ${reservationCheckInDate}</p>
-        <p><b>Check Out Date:</b> ${reservationCheckOutDate}</p>
-        <br/>
+      <h1><b>Dear Operators,</b></h1><hr/>
+      <p>Reservation of customer <b>${customerTitle} ${customerLastName}</b> is now open for suggestion with the following details:</p>
+      <p><b>Property Name:</b> ${reservationProperty}</p>
+      <p><b>Check In Date:</b> ${reservationCheckInDate}</p>
+      <p><b>Check Out Date:</b> ${reservationCheckOutDate}</p>
+      <br/>
         <p>Please kindly click the button below to pick up the "Suggest" opportunity on a first-come, first-served basis.</p>
         <p>You may <b>ignore</b> this message if <b>not interested</b>.</p>
-        <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pick Up</a>
+      <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pick Up</a>
       `,
     };
 
@@ -2257,7 +2253,7 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
   }
 
   if (!uimage) {
-    return res.status(400).json({ message: 'No image data provided.' });
+      return res.status(400).json({ message: 'No image data provided.' });
   }
 
   let client;
