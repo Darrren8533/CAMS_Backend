@@ -464,7 +464,7 @@ app.put('/users/updateUser/:userid', async (req, res) => {
 
 
 // Remove users by user ID
-app.delete('/users/removeUser/:userid', async (req, res) => {
+app.('/users/removeUser/:userid', async (req, res) => {
   const { userid } = req.params;
   let client;
 
@@ -481,9 +481,9 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
       return res.status(404).json({ message: 'User not found', success: false });
     }
 
-    // Delete the user
+    //  the user
     await client.query(
-      'DELETE FROM users WHERE userid = $1',
+      ' FROM users WHERE userid = $1',
       [userid]
     );
 
@@ -1016,49 +1016,38 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
 
 
 app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
-  const { propertyid } = req.params;
-  let client;
-
-  try {
-    client = await pool.connect();
-
-    // Check if the property exists
-    const propertyCheck = await client.query(
-      'SELECT propertyid FROM properties WHERE propertyid = $1',
-      [propertyid]
-    );
-
-    if (propertyCheck.rowCount === 0) {
-      return res.status(404).json({ message: 'Property not found', success: false });
+    const { propertyid } = req.params;
+    let client;
+  
+    try {
+      client = await pool.connect();
+  
+      // Check if the property exists
+      const propertyCheck = await client.query(
+        'SELECT propertyid FROM properties WHERE propertyid = $1',
+        [propertyid]
+      );
+  
+      if (propertyCheck.rowCount === 0) {
+        return res.status(404).json({ message: 'Property not found', success: false });
+      }
+  
+      // Delete the property from the database
+      await client.query(
+        'DELETE FROM properties WHERE propertyid = $1',
+        [propertyid]
+      );
+  
+      res.status(200).json({ message: 'Property deleted successfully', success: true });
+    } catch (err) {
+      console.error('Error deleting property:', err);
+      res.status(500).json({ message: 'Internal Server Error'});
+    } finally {
+      if (client) {
+        client.release();
+      }
     }
-
-    // Check if the property is linked with any reservations
-    const reservationCheck = await client.query(
-      'SELECT 1 FROM reservation WHERE propertyid = $1 LIMIT 1',
-      [propertyid]
-    );
-
-    if (reservationCheck.rowCount > 0) {
-      return res.status(400).json({ message: 'Cannot delete property. Existing reservation(s) detected.', success: false });
-    }
-
-    // Delete the property from the database
-    await client.query(
-      'DELETE FROM properties WHERE propertyid = $1',
-      [propertyid]
-    );
-
-    res.status(200).json({ message: 'Property deleted successfully', success: true });
-
-  } catch (err) {
-    console.error('Error deleting property:', err);
-    res.status(500).json({ message: 'Internal Server Error' });
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-});
+  });
 
 
 
