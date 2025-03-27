@@ -1032,6 +1032,16 @@ app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
       return res.status(404).json({ message: 'Property not found', success: false });
     }
 
+    // Check if the property is linked with any reservations
+    const reservationCheck = await client.query(
+      'SELECT 1 FROM reservation WHERE propertyid = $1 LIMIT 1',
+      [propertyid]
+    );
+
+    if (reservationCheck.rowCount > 0) {
+      return res.status(400).json({ message: 'Cannot delete property. Existing reservation(s) detected.', success: false });
+    }
+
     // Delete the property from the database
     await client.query(
       'DELETE FROM properties WHERE propertyid = $1',
@@ -1039,15 +1049,17 @@ app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
     );
 
     res.status(200).json({ message: 'Property deleted successfully', success: true });
+
   } catch (err) {
     console.error('Error deleting property:', err);
-    res.status(500).json({ message: 'Internal Server Error'});
+    res.status(500).json({ message: 'Internal Server Error' });
   } finally {
     if (client) {
       client.release();
     }
   }
 });
+
 
 
 // Check user status by userID
