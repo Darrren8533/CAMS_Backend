@@ -464,7 +464,7 @@ app.put('/users/updateUser/:userid', async (req, res) => {
 
 
 // Remove users by user ID
-app.('/users/removeUser/:userid', async (req, res) => {
+app.delete('/users/removeUser/:userid', async (req, res) => {
   const { userid } = req.params;
   let client;
 
