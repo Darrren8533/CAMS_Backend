@@ -672,7 +672,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       // 同样检查类别是否存在
       let categoryID;
       const existingCategory = await client.query(
-          'SELECT categoryid FROM categories WHERE categoryname = $1',
+          'SELECT categoryid FROM categories WHERE LOWER(categoryname) = LOWER($1)',
           [categoryName]
       );
       if (existingCategory.rows.length > 0) {
