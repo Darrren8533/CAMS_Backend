@@ -1774,12 +1774,12 @@ app.get('/users/finance', async (req, res) => {
   try {
     const result = await pool.request().query(`
       SELECT 
-        FORMAT(propertyidcheckindatetime, 'yyyy-MM') as month,
+        FORMAT(checkindatetime, 'yyyy-MM') as month,
         SUM(totalprice) AS monthlyRevenue,
         COUNT(reservationid) AS monthlyReservations
-      FROM Reservation
-      WHERE reservationStatus = 'Accepted'
-      GROUP BY FORMAT(propertyidcheckindatetime, 'yyyy-MM')
+      FROM reservation
+      WHERE reservationstatus = 'Accepted'
+      GROUP BY FORMAT(checkindatetime, 'yyyy-MM')
       ORDER BY month;
     `);
 
