@@ -734,11 +734,12 @@ app.get('/product', async (req, res) => {
     client = await pool.connect();
     
     const query = `
-      SELECT p.*, u.username, r.rateamount, c.categoryname 
+      SELECT p.*, u.username, r.rateamount, c.categoryname, res.reservationid, res.checkindatetime, res.checkoutdatetime, reservationstatus
       FROM properties p
       JOIN rate r ON p.rateid = r.rateid
       JOIN categories c ON p.categoryid = c.categoryid
       JOIN users u ON p.userid = u.userid
+      LEFT JOIN reservation res ON p.propertyid = res.propertyid
       WHERE p.propertystatus = 'Available'
     `;
     
