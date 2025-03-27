@@ -708,22 +708,6 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
 
       const propertyid = propertyListingResult.rows[0].propertyid;
       
-      // 对于集群，应该只关联而不是修改名称
-      await client.query(
-          `UPDATE properties
-           SET clusterid = (SELECT clusterid FROM clusters WHERE clustername = $1)
-           WHERE propertyid = $2`,
-          [clusterName, propertyid]
-      );
-
-      // 对于类别，应该只关联而不是修改名称
-      await client.query(
-          `UPDATE properties
-           SET categoryid = (SELECT categoryid FROM categories WHERE categoryname = $1)
-           WHERE propertyid = $2`,
-          [categoryName, propertyid]
-      );
-      
       // 提交事务
       await client.query('COMMIT');
 
@@ -750,7 +734,7 @@ app.get('/product', async (req, res) => {
     client = await pool.connect();
     
     const query = `
-      SELECT p.*, u.username, r.rateamount, c.categoryname 
+      SELECT p.*, u.username, r.rateamount, c.categoryname, res.reservationid, res.checkindatetime, res.checkoutdatetime, reservationstatus
       FROM properties p
       JOIN rate r ON p.rateid = r.rateid
       JOIN categories c ON p.categoryid = c.categoryid
