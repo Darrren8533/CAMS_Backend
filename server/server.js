@@ -1770,32 +1770,33 @@ app.get('/users/booklog', async (req, res) => {
   }
 });
 
-app.get('/users/finance', async (req, res) => {
+app.get("/users/finance", async (req, res) => {
   try {
-    const result = await pool.request().query(`
+    const result = await pool.query(`
       SELECT 
-        FORMAT(checkindatetime, 'yyyy-MM') as month,
+        TO_CHAR(checkindatetime, 'YYYY-MM') AS month,
         SUM(totalprice) AS monthlyRevenue,
         COUNT(reservationid) AS monthlyReservations
-      FROM reservation
-      WHERE reservationstatus = 'Accepted'
-      GROUP BY FORMAT(checkindatetime, 'yyyy-MM')
+      FROM Reservation
+      WHERE reservationStatus = 'Accepted'
+      GROUP BY TO_CHAR(checkindatetime, 'YYYY-MM')
       ORDER BY month;
     `);
 
-    if (result.recordset && result.recordset.length > 0) {
-      console.log('Monthly data:', result.recordset);
-      
+    if (result.rows && result.rows.length > 0) {
+      console.log("Monthly data:", result.rows);
+
       res.json({
-        monthlyData: result.recordset
+        monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: 'No reservations found' });
+      res.status(404).json({ message: "No reservations found" });
     }
-    
   } catch (err) {
-    console.error('Error fetching finance data:', err);
-    res.status(500).json({ message: 'Internal Server Error', details: err.message });
+    console.error("Error fetching finance data:", err);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", details: err.message });
   }
 });
 
