@@ -1467,6 +1467,14 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
 
     const { propertyaddress: property, ulastname: moderatorLastName, uemail: moderatorEmail, utitle: moderatorTitle } = result.rows[0];
 
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'laudarren911@gmail.com',
+        pass: 'tlld oplc qepx hbzy',
+      },
+    });
+
     const mailOptions = {
       from: "laudarren911@gmail.com",
       to: moderatorEmail,
@@ -1511,6 +1519,15 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
     }
 
     const { propertyaddress: property, ulastname: moderatorLastName, uemail: moderatorEmail, utitle: moderatorTitle } = result.rows[0];
+
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'laudarren911@gmail.com',
+        pass: 'tlld oplc qepx hbzy',
+      },
+    });
 
     const mailOptions = {
       from: "laudarren911@gmail.com",
