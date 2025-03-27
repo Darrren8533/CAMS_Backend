@@ -734,13 +734,11 @@ app.get('/product', async (req, res) => {
     client = await pool.connect();
     
     const query = `
-      SELECT p.*, u.username, r.rateamount, c.categoryname,
-             res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
+      SELECT p.*, u.username, r.rateamount, c.categoryname 
       FROM properties p
       JOIN rate r ON p.rateid = r.rateid
       JOIN categories c ON p.categoryid = c.categoryid
       JOIN users u ON p.userid = u.userid
-      LEFT JOIN reservation res ON p.propertyid = res.propertyid
       WHERE p.propertystatus = 'Available'
     `;
     
@@ -892,11 +890,11 @@ app.get('/propertiesListingTable', async (req, res) => {
 });
 
 // Update an existing property listing by property ID
-app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), async (req, res) => {
+app.put('/propertiesListing/:propertyid', upload.array('propertyimage', 10), async (req, res) => {
     const { propertyid } = req.params;
   const {
-        propertyaddress, propertyprice, propertydescription, nearbylocation,
-        propertybedtype, propertyguestpaxno, clustername, categoryname
+        propertyAddress, propertyPrice, propertyDescription, nearbyLocation,
+        propertyBedType, propertyGuestPaxNo, clusterName, categoryName
   } = req.body;
 
   const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
@@ -941,11 +939,11 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
                  propertyimage = $6 
              WHERE propertyid = $7`,
             [
-                propertydescription,
-                propertyaddress,
-                nearbylocation,
-                propertybedtype,
-                propertyguestpaxno,
+                propertyDescription,
+                propertyAddress,
+                nearbyLocation,
+                propertyBedType,
+                propertyGuestPaxNo,
                 concatenatedImages,
                 propertyid
             ]
@@ -955,21 +953,21 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
             `UPDATE rate 
              SET rateamount = $1 
              WHERE rateid = $2`,
-            [propertyprice, propertyResult.rows[0].rateid]
+            [propertyPrice, propertyResult.rows[0].rateid]
         );
   
         await client.query(
             `UPDATE clusters 
              SET clustername = $1 
              WHERE clusterid = $2`,
-            [clustername, propertyResult.rows[0].clusterid]
+            [clusterName, propertyResult.rows[0].clusterid]
         );
   
         await client.query(
             `UPDATE categories 
              SET categoryname = $1 
              WHERE categoryid = $2`,
-            [categoryname, propertyResult.rows[0].categoryid]
+            [categoryName, propertyResult.rows[0].categoryid]
         );
 
       res.status(200).json({ message: 'Property updated successfully' });
