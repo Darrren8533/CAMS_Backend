@@ -1771,7 +1771,7 @@ app.get('/users/booklog', async (req, res) => {
   }
 });
 
-app.get("/users/finance", async (req, res) => {
+app.get("/users/occupancy_rate", async (req, res) => {
   try {
     const result = await pool.query(`
       WITH monthly_data AS (
@@ -1827,6 +1827,37 @@ app.get("/users/finance", async (req, res) => {
       .json({ message: "Internal Server Error", details: err.message });
   }
 });
+
+app.get("/users/finance", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        TO_CHAR(checkindatetime, 'YYYY-MM') AS month,
+        SUM(totalprice) AS monthlyrevenue,
+        COUNT(reservationid) AS monthlyreservations
+      FROM reservation
+      WHERE reservationstatus = 'Accepted'
+      GROUP BY TO_CHAR(checkindatetime, 'YYYY-MM')
+      ORDER BY month;
+    `);
+
+    if (result.rows && result.rows.length > 0) {
+      console.log("Monthly data:", result.rows);
+
+      res.json({
+        monthlyData: result.rows,
+      });
+    } else {
+      res.status(404).json({ message: "No reservations found" });
+    }
+  } catch (err) {
+    console.error("Error fetching finance data:", err);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", details: err.message });
+  }
+});
+
 
 // Fetch reservations for the logged-in user
 app.get('/cart', async (req, res) => {
