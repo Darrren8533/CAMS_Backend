@@ -1775,38 +1775,40 @@ app.get("/users/finance", async (req, res) => {
   try {
     const result = await pool.query(`
       WITH monthly_data AS (
-        SELECT 
-          TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
-          SUM(EXTRACT(DAY FROM (r.checkoutdatetime - r.checkindatetime))) AS total_reserved_nights,
-          SUM(r.totalprice) AS monthly_revenue,
-          COUNT(r.reservationid) AS monthly_reservations
-        FROM reservation r
-        WHERE r.reservationstatus = 'Accepted'
-        GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
-      ),
-      total_available_nights AS (
-        SELECT 
-          TO_CHAR(generate_series, 'YYYY-MM') AS month,
-          COUNT(p.propertyid) * EXTRACT(DAY FROM generate_series) AS total_available_nights
-        FROM generate_series(
-          (SELECT MIN(checkindatetime) FROM reservation),
-          (SELECT MAX(checkoutdatetime) FROM reservation),
-          INTERVAL '1 month'
-        ),
-        properties p
-        WHERE p.propertystatus = 'Available'
-        GROUP BY month
-      )
-      SELECT 
-        md.month,
-        md.monthly_revenue,
-        md.monthly_reservations,
-        md.total_reserved_nights,
-        tan.total_available_nights,
-        (md.total_reserved_nights::DECIMAL / NULLIF(tan.total_available_nights, 0) * 100) AS occupancy_rate
-      FROM monthly_data md
-      JOIN total_available_nights tan ON md.month = tan.month
-      ORDER BY md.month;
+    SELECT 
+        TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+        SUM(EXTRACT(DAY FROM (r.checkoutdatetime - r.checkindatetime))) AS total_reserved_nights,
+        SUM(r.totalprice) AS monthly_revenue,
+        COUNT(r.reservationid) AS monthly_reservations
+    FROM reservation r
+    WHERE r.reservationstatus = 'Accepted'
+    GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
+),
+total_available_nights AS (
+    SELECT 
+        TO_CHAR(gs.month, 'YYYY-MM') AS month,
+        COUNT(p.propertyid) * DATE_PART('day', gs.month + INTERVAL '1 month' - INTERVAL '1 day') AS total_available_nights
+    FROM (
+        SELECT generate_series(
+            (SELECT DATE_TRUNC('month', MIN(checkindatetime)) FROM reservation),
+            (SELECT DATE_TRUNC('month', MAX(checkoutdatetime)) FROM reservation),
+            INTERVAL '1 month'
+        ) AS month
+    ) gs
+    CROSS JOIN properties p
+    WHERE p.propertystatus = 'Available'
+    GROUP BY gs.month
+)
+SELECT 
+    md.month,
+    md.monthly_revenue,
+    md.monthly_reservations,
+    md.total_reserved_nights,
+    tan.total_available_nights,
+    (md.total_reserved_nights::DECIMAL / NULLIF(tan.total_available_nights, 0) * 100) AS occupancy_rate
+FROM monthly_data md
+JOIN total_available_nights tan ON md.month = tan.month
+ORDER BY md.month;
     `);
 
     if (result.rows.length > 0) {
