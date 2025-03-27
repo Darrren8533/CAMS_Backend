@@ -892,7 +892,7 @@ app.get('/propertiesListingTable', async (req, res) => {
 });
 
 // Update an existing property listing by property ID
-app.put('/propertiesListing/:propertyid', upload.array('propertyimage', 10), async (req, res) => {
+app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), async (req, res) => {
     const { propertyid } = req.params;
   const {
         propertyaddress, propertyprice, propertydescription, nearbylocation,
