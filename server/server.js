@@ -1787,10 +1787,10 @@ app.get("/users/finance", async (req, res) => {
     const result = await pool.query(`
       SELECT 
         TO_CHAR(checkindatetime, 'YYYY-MM') AS month,
-        SUM(totalprice) AS monthlyRevenue,
-        COUNT(reservationid) AS monthlyReservations
-      FROM Reservation
-      WHERE reservationStatus = 'Accepted'
+        SUM(totalprice) AS monthlyrevenue,
+        COUNT(reservationid) AS monthlyreservations
+      FROM reservation
+      WHERE reservationstatus = 'Accepted'
       GROUP BY TO_CHAR(checkindatetime, 'YYYY-MM')
       ORDER BY month;
     `);
