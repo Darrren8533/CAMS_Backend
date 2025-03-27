@@ -1387,7 +1387,7 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
     
     const moderatorResult = await client.query(
       `SELECT p.propertyaddress, u.ulastname, u.utitle, u.usergroup 
-       FROM property p 
+       FROM properties p 
        JOIN users u ON u.userid = p.userid 
        WHERE p.propertyid = $1`,
       [propertyid]
