@@ -1015,7 +1015,7 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
 });
 
 
-app.delete('/propertiesListing/:propertyid', async (req, res) => {
+app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
   const { propertyid } = req.params;
   let client;
 
