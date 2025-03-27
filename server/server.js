@@ -578,12 +578,7 @@ app.put('/users/activateuser/:userid', async (req, res) => {
   }
 });
 
-const uploadFields = upload.fields([
-  { name: 'propertyImage', maxCount: 10 },
-  { name: 'propertyimage', maxCount: 10 } // 添加小写字母版本
-]);
-
-app.post('/propertiesListing', uploadFields, async (req, res) => {
+app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, res) => {
   const {
       username,
       propertyPrice,
