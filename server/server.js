@@ -1859,6 +1859,38 @@ app.get("/users/occupancy_rate", async (req, res) => {
   }
 });
 
+app.get("/users/RevPAR", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+          COALESCE(SUM(r.totalprice), 0) / NULLIF(COUNT(p.propertyid), 0) AS revpar
+      FROM 
+          properties p
+      LEFT JOIN 
+          reservation r
+      ON 
+          p.propertyid = r.propertyid
+      WHERE 
+          p.propertystatus = 'Available';
+    `);
+
+    if (result.rows.length > 0) {
+      console.log("RevPAR result:", result.rows);
+
+      res.json({
+        monthlyData: result.rows,
+      });
+    } else {
+      res.status(404).json({ message: "No reservations found" });
+    }
+  } catch (err) {
+    console.error("Error fetching finance data:", err);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", details: err.message });
+  }
+});
+
 // Fetch reservations for the logged-in user
 app.get('/cart', async (req, res) => {
   const userid = req.query.userid;
