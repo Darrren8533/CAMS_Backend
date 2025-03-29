@@ -734,7 +734,7 @@ app.get('/product', async (req, res) => {
     client = await pool.connect();
     
     const query = `
-      SELECT DISTINCT ON (p.propertyid) p.*, u.username, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
+      SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
       FROM properties p
       JOIN rate r ON p.rateid = r.rateid
       JOIN categories c ON p.categoryid = c.categoryid
