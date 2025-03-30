@@ -1916,6 +1916,32 @@ app.get("/users/cancellation_rate", async (req, res) => {
   }
 });
 
+app.get("/users/customer_retention_rate", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+          (COUNT(DISTINCT r.userid) * 100.0) / COUNT(DISTINCT u.userid) AS customer_retention_rate
+      FROM users u
+      LEFT JOIN reservation r ON u.userid = r.userid;
+    `);
+
+    if (result.rows.length > 0) {
+      console.log("Customer Retention Rate result:", result.rows);
+
+      res.json({
+        monthlyData: result.rows,
+      });
+    } else {
+      res.status(404).json({ message: "No reservations found" });
+    }
+  } catch (err) {
+    console.error("Error fetching customer retention rate data:", err);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", details: err.message });
+  }
+});
+
 // Fetch reservations for the logged-in user
 app.get('/cart', async (req, res) => {
   const userid = req.query.userid;
