@@ -1852,7 +1852,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
       res.status(404).json({ message: "No reservations found" });
     }
   } catch (err) {
-    console.error("Error fetching finance data:", err);
+    console.error("Error fetching occupancy rate data:", err);
     res
       .status(500)
       .json({ message: "Internal Server Error", details: err.message });
@@ -1884,7 +1884,32 @@ app.get("/users/RevPAR", async (req, res) => {
       res.status(404).json({ message: "No reservations found" });
     }
   } catch (err) {
-    console.error("Error fetching finance data:", err);
+    console.error("Error fetching RevPAR data:", err);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", details: err.message });
+  }
+});
+
+app.get("/users/cancellation_rate", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+          (COUNT(CASE WHEN reservationstatus = 'Cancelled' THEN 1 END) * 100.0) / NULLIF(COUNT(reservationid), 0) AS cancellation_rate
+      FROM reservation;
+    `);
+
+    if (result.rows.length > 0) {
+      console.log("Cancellation Rate result:", result.rows);
+
+      res.json({
+        monthlyData: result.rows,
+      });
+    } else {
+      res.status(404).json({ message: "No reservations found" });
+    }
+  } catch (err) {
+    console.error("Error fetching cancellation rate data:", err);
     res
       .status(500)
       .json({ message: "Internal Server Error", details: err.message });
