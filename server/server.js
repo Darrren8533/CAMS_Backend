@@ -1942,6 +1942,29 @@ app.get("/users/customer_retention_rate", async (req, res) => {
   }
 });
 
+app.get("/users/guest_satisfaction_score", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT AVG(rating) AS guest_satisfaction_score FROM properties GROUP BY propertyid; 
+    `);
+
+    if (result.rows.length > 0) {
+      console.log("Guest Satisfaction Score result:", result.rows);
+
+      res.json({
+        monthlyData: result.rows,
+      });
+    } else {
+      res.status(404).json({ message: "No rating found" });
+    }
+  } catch (err) {
+    console.error("Error fetching guest satisfaction score data:", err);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", details: err.message });
+  }
+});
+
 // Fetch reservations for the logged-in user
 app.get('/cart', async (req, res) => {
   const userid = req.query.userid;
