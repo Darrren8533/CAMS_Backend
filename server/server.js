@@ -2098,7 +2098,7 @@ app.get('/reservationTable', async (req, res) => {
         JOIN properties p ON r.propertyid = p.propertyid
         JOIN reservation_customer_details rc ON r.rcid = rc.rcid
         WHERE p.userid = $1
-        AND r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
+        AND r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Cancelled', 'Paid')
       `;
     } else {
       // 如果是管理员，查看所有预订
@@ -2124,7 +2124,7 @@ app.get('/reservationTable', async (req, res) => {
         FROM reservation r
         JOIN properties p ON r.propertyid = p.propertyid
         JOIN reservation_customer_details rc ON r.rcid = rc.rcid
-        WHERE r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
+        WHERE r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Cancelled', 'Paid')
       `;
     }
 
@@ -2151,21 +2151,21 @@ app.get('/reservationTable', async (req, res) => {
   }
 });
 
-// Update reservation status to "Canceled"
+// Update reservation status to "Cancelled"
 app.put('/cancelReservation/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
 
   try {
     await pool.request()
       .input('reservationid', sql.Int, reservationid)
-      .input('reservationStatus', sql.VarChar, 'Canceled')
+      .input('reservationStatus', sql.VarChar, 'Cancelled')
       .query(`
         UPDATE Reservation 
         SET reservationStatus = @reservationStatus
         WHERE reservationid = @reservationid;
       `);
 
-    res.status(200).json({ message: 'Reservation status updated to Canceled' });
+    res.status(200).json({ message: 'Reservation status updated to Cancelled' });
   } catch (err) {
     console.error('Error updating reservation status:', err);
     res.status(500).json({ message: 'Internal Server Error', details: err.message });
