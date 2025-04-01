@@ -1792,7 +1792,7 @@ app.get("/users/finance", async (req, res) => {
         monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservations found" });
+      res.status(404).json({ message: "No reservation found" });
     }
   } catch (err) {
     console.error("Error fetching finance data:", err);
@@ -1849,7 +1849,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
         monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservations found" });
+      res.status(404).json({ message: "No reservation found" });
     }
   } catch (err) {
     console.error("Error fetching occupancy rate data:", err);
@@ -1881,7 +1881,7 @@ app.get("/users/RevPAR", async (req, res) => {
         monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservations found" });
+      res.status(404).json({ message: "No reservation found" });
     }
   } catch (err) {
     console.error("Error fetching RevPAR data:", err);
@@ -1906,7 +1906,7 @@ app.get("/users/cancellation_rate", async (req, res) => {
         monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservations found" });
+      res.status(404).json({ message: "No reservation found" });
     }
   } catch (err) {
     console.error("Error fetching cancellation rate data:", err);
@@ -1932,7 +1932,7 @@ app.get("/users/customer_retention_rate", async (req, res) => {
         monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservations found" });
+      res.status(404).json({ message: "No reservation found" });
     }
   } catch (err) {
     console.error("Error fetching customer retention rate data:", err);
@@ -1959,6 +1959,34 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
     }
   } catch (err) {
     console.error("Error fetching guest satisfaction score data:", err);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", details: err.message });
+  }
+});
+
+app.get("/users/alos", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+          p.propertyid,
+          COALESCE(SUM(EXTRACT(DAY FROM r.checkoutdatetime - r.checkIndatetime)) / NULLIF(COUNT(r.reservationid), 0), 0) AS average_length_of_stay
+      FROM properties p
+      LEFT JOIN reservation r ON p.propertyid = r.propertyid
+      GROUP BY p.propertyid; 
+    `);
+
+    if (result.rows.length > 0) {
+      console.log("Average Length of Stay result:", result.rows);
+
+      res.json({
+        monthlyData: result.rows,
+      });
+    } else {
+      res.status(404).json({ message: "No reservation found" });
+    }
+  } catch (err) {
+    console.error("Error fetching average length of stay data:", err);
     res
       .status(500)
       .json({ message: "Internal Server Error", details: err.message });
