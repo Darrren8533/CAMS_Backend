@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 const sharp = require('sharp');
+require("dotenv").config();
 
 const connectionString = process.env.DATABASE_URL || 
   'postgres://neondb_owner:npg_UboyFf1vh5RV@ep-wild-block-a1b1y0kt-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require';
@@ -1050,8 +1051,6 @@ app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
     }
   });
 
-
-
 // Check user status by userID
 app.get('/checkStatus', async(req, res) => {
   const { userid } = req.query;
@@ -1111,14 +1110,14 @@ app.post("/contact_us", async (req, res) => {
   const transporter = nodemailer.createTransport({
       service: "gmail",
     auth: {
-        user: "omg71933@gmail.com",
-        pass: "eyiwkkdsklngzzzj",
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
     },
   });
 
   const mailOptions = {
-      from: "omg71933@gmail.com",
-      to: "omg71933@gmail.com",
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
     subject: `Message from ${name}`,
     html: `
     <h1>New Message from ${name}</h1>
@@ -1183,13 +1182,13 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: 'laudarren911@gmail.com',
+      from: process.env.EMAIL_USER,
       to: userEmail,
       subject: 'Booking Request',
       html: `
@@ -1260,13 +1259,13 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: 'laudarren911@gmail.com',
+      from: process.env.EMAIL_USER,
       to: customerEmail,
       subject: 'Booking Accepted',
       html: `
@@ -1345,13 +1344,13 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: 'laudarren911@gmail.com',
+      from: process.env.EMAIL_USER,
       to: customerEmail,
       subject: 'Booking Request Rejected & New Room Suggestion',
       html: `
@@ -1417,13 +1416,13 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: 'laudarren911@gmail.com',
+      from: process.env.EMAIL_USER,
       to: adminEmails,
       subject: 'Property Listing Request',
       html: `
@@ -1473,13 +1472,13 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: "laudarren911@gmail.com",
+      from: process.env.EMAIL_USER,
       to: moderatorEmail,
       subject: "Property Listing Request Accepted",
       html: `
@@ -1527,13 +1526,13 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: "laudarren911@gmail.com",
+      from: process.env.EMAIL_USER,
       to: moderatorEmail,
       subject: "Property Listing Request Rejected",
       html: `
@@ -1609,13 +1608,13 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: 'laudarren911@gmail.com',
+      from: process.env.EMAIL_USER,
       to: selectedEmails,
       subject: 'Suggestion Available',
       html: `
@@ -2325,13 +2324,13 @@ app.post('/forgot-password', async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'laudarren911@gmail.com',
-        pass: 'tlld oplc qepx hbzy',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: 'laudarren911@gmail.com',
+      from: process.env.EMAIL_USER,
       to: email,
       subject: 'Hello Sarawak Password Reset',
       html: `
