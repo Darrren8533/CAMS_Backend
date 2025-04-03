@@ -695,15 +695,15 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
               propertyno, userid, clusterid, categoryid, rateid,
               propertydescription, propertyaddress,
               propertybedtype, propertybedimage, propertyguestpaxno, propertyimage,
-              propertystatus, nearbylocation, facilities, policies
+              propertystatus, nearbylocation, rating, facilities, policies
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
           RETURNING propertyid`,
           [
               "1", userid, clusterID, categoryID, rateID,
               propertyDescription, propertyAddress,
               propertyBedType, "1", propertyGuestPaxNo, concatenatedImages,
-              propertyStatus, nearbyLocation, facilities, "policies"
+              propertyStatus, nearbyLocation, "0", facilities, "policies"
           ]
       );
 
@@ -1944,7 +1944,7 @@ app.get("/users/customer_retention_rate", async (req, res) => {
 app.get("/users/guest_satisfaction_score", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT propertyid, AVG(rating) AS guest_satisfaction_score FROM properties GROUP BY propertyid; 
+      SELECT propertyid, AVG(rating) AS guest_satisfaction_score FROM properties WHERE propertystatus = "Available" GROUP BY propertyid; 
     `);
 
     if (result.rows.length > 0) {
