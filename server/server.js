@@ -25,6 +25,7 @@ const pool = new Pool({
 const app = express();
 
 app.get('/', async(req, res) => {
+  console.log('DATABASE_URL:', process.env.DATABASE_URL);
   let client;
   try {
     client = await pool.connect();
