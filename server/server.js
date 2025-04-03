@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 const sharp = require('sharp');
-require("dotenv").config();
+require("dotenv").config({ path: path.resolve(__dirname, '.env') });
 
 const connectionString = process.env.DATABASE_URL ;
 
