@@ -1944,7 +1944,7 @@ app.get("/users/customer_retention_rate", async (req, res) => {
 app.get("/users/guest_satisfaction_score", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT propertyid, AVG(rating) AS guest_satisfaction_score FROM properties WHERE propertystatus = 'Available' GROUP BY propertyid; 
+      SELECT propertyid, AVG(rating) AS guest_satisfaction_score FROM properties GROUP BY propertyid; 
     `);
 
     if (result.rows.length > 0) {
