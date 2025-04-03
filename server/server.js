@@ -11,8 +11,7 @@ const { Pool } = require('pg');
 const sharp = require('sharp');
 require("dotenv").config();
 
-const connectionString = process.env.DATABASE_URL || 
-  'postgres://neondb_owner:npg_UboyFf1vh5RV@ep-wild-block-a1b1y0kt-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require';
+const connectionString = process.env.DATABASE_URL;
 
 const port = 5432;
 
