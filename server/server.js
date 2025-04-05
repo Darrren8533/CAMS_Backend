@@ -1224,8 +1224,9 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
   let client;
 
   try {
+    console.log('Reservation ID received:', reservationid);
     client = await pool.connect();
-    
+
     const result = await client.query(
       `SELECT 
         rc.rclastname, 
@@ -1243,18 +1244,25 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      console.log('No matching reservation found.');
       return res.status(404).json({ message: 'Reservation customer or property not found' });
     }
 
-    const { 
-      rclastname: customerLastName, 
-      rcemail: customerEmail, 
-      rctitle: customerTitle, 
-      checkindatetime: reservationCheckInDate, 
-      checkoutdatetime: reservationCheckOutDate, 
-      reservationblocktime: paymentDueDate, 
-      propertyaddress: reservationProperty 
-    } = result.rows[0];
+    const data = result.rows[0];
+    console.log('Email data:', data);
+
+    const {
+      rclastname: customerLastName,
+      rcemail: customerEmail,
+      rctitle: customerTitle,
+      checkindatetime: reservationCheckInDate,
+      checkoutdatetime: reservationCheckOutDate,
+      reservationblocktime: paymentDueDate,
+      propertyaddress: reservationProperty,
+    } = data;
+
+    // More detailed logging
+    console.log('Preparing to send email to:', customerEmail);
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1269,14 +1277,15 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
       to: customerEmail,
       subject: 'Booking Accepted',
       html: `
-      <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
-      <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: green">accepted</span>.</p> 
-      <p>Please kindly click the button below to make payment before <b>${paymentDueDate}</b> to secure your booking.</p>  
-      <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pay</a>
+        <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
+        <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: green">accepted</span>.</p> 
+        <p>Please kindly click the button below to make payment before <b>${paymentDueDate}</b> to secure your booking.</p>  
+        <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pay</a>
       `,
     };
 
     await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully.');
     res.status(200).json({ message: 'Email sent successfully' });
   } catch (err) {
     console.error('Error sending email:', err);
