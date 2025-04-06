@@ -251,7 +251,6 @@ app.post("/google-login", async (req, res) => {
   }
 });
 
-// 用户退出登录端点
 app.post('/logout', async (req, res) => {
   const { userid } = req.body;
   let client;
@@ -259,7 +258,6 @@ app.post('/logout', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // 更新用户状态为已登出
     const query = {
       text: `UPDATE users SET ustatus = 'logout' WHERE userid = $1`,
       values: [userid]
@@ -272,7 +270,6 @@ app.post('/logout', async (req, res) => {
     console.error('Error during logout:', err);
     res.status(500).json({ message: 'Server error', success: false });
   } finally {
-    // 确保释放数据库连接
     if (client) {
       client.release();
     }
@@ -427,7 +424,6 @@ app.put('/users/updateUser/:userid', async (req, res) => {
   const { firstName, lastName, username, email, phoneNo, country, zipCode } = req.body;
 
   try {
-      // 使用参数化查询更新用户信息
       const query = `
           UPDATE users
           SET ufirstname = $1, 
@@ -651,7 +647,6 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           [propertyPrice, "DefaultType", "DefaultPeriod"]
       );
       const rateID = rateResult.rows[0].rateid;
-      // 先检查集群是否存在
       let clusterID;
       const existingCluster = await client.query(
           'SELECT clusterid FROM clusters WHERE clustername = $1',
@@ -661,7 +656,6 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       if (existingCluster.rows.length > 0) {
           clusterID = existingCluster.rows[0].clusterid;
       } else {
-          // 如果集群不存在，才创建新的
           const clusterResult = await client.query(
               `INSERT INTO clusters (clustername, clusterstate, clusterprovince)
                VALUES ($1, $2, $3)
@@ -670,7 +664,6 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           );
           clusterID = clusterResult.rows[0].clusterid;
       }
-      // 同样检查类别是否存在
       let categoryID;
       const existingCategory = await client.query(
           'SELECT categoryid FROM categories WHERE categoryname = $1',
@@ -679,7 +672,6 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       if (existingCategory.rows.length > 0) {
           categoryID = existingCategory.rows[0].categoryid;
       } else {
-          // 如果类别不存在，才创建新的
           const categoryResult = await client.query(
               `INSERT INTO categories (categoryname, availablestates)
                VALUES ($1, $2)
@@ -709,19 +701,16 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
 
       const propertyid = propertyListingResult.rows[0].propertyid;
       
-      // 提交事务
       await client.query('COMMIT');
 
       res.status(201).json({ message: 'Property created successfully', propertyid });
   } catch (err) {
-      // 回滚事务
       if (client) {
         await client.query('ROLLBACK');
       }
       console.error('Error inserting property: ', err);
       res.status(500).json({ error: 'Internal Server Error', details: err.message });
   } finally {
-      // 释放连接
       if (client) {
         client.release();
       }
@@ -747,7 +736,6 @@ app.get('/product', async (req, res) => {
     
     const result = await client.query(query);
     
-    // 打印原始查询结果中的第一个属性对象(如果存在)
     if (result.rows.length > 0) {
       console.log('Sample property object from database:');
       console.log(JSON.stringify(result.rows[0], null, 2));
@@ -756,7 +744,6 @@ app.get('/product', async (req, res) => {
     }
     
     const properties = result.rows.map(property => {
-      // 处理图片并打印处理前后的图片数据
       console.log(`Property ID ${property.propertyid} - Original image data:`, 
                   property.propertyimage ? property.propertyimage.substring(0, 50) + '...' : 'No image');
       
@@ -771,10 +758,8 @@ app.get('/product', async (req, res) => {
       return processedProperty;
     });
     
-    // 打印处理后的第一个属性对象(如果存在)
     if (properties.length > 0) {
       console.log('Sample processed property object:');
-      // 克隆对象并截断图片数据以避免日志过大
       const sampleProperty = {...properties[0]};
       if (sampleProperty.propertyimage && sampleProperty.propertyimage.length > 0) {
         sampleProperty.propertyimage = [`${sampleProperty.propertyimage[0].substring(0, 50)}... (truncated)`, 
@@ -806,7 +791,6 @@ app.get('/propertiesListingTable', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // 查询用户信息
     const userResult = await client.query(
       'SELECT userid, usergroup FROM users WHERE username = $1',
       [username]
@@ -822,7 +806,6 @@ app.get('/propertiesListingTable', async (req, res) => {
     let query;
 
     if (usergroup === 'Moderator') {
-      // Moderator 只能看到自己的属性
       query = `
         SELECT 
           p.propertyid, 
@@ -847,7 +830,6 @@ app.get('/propertiesListingTable', async (req, res) => {
         WHERE p.userid = $1
       `;
     } else {
-      // Administrator 可以看到所有属性
       query = `
         SELECT 
           p.propertyid, 
@@ -869,10 +851,9 @@ app.get('/propertiesListingTable', async (req, res) => {
         JOIN rate r ON p.rateid = r.rateid
         JOIN clusters cl ON p.clusterid = cl.clusterid
         JOIN categories c ON p.categoryid = c.categoryid
-      `; // 移除 WHERE 条件，这样管理员可以看到所有属性
+      `; 
     }
 
-    // 相应地修改查询参数
     const params = usergroup === 'Moderator' ? [userid] : [];
     const result = await client.query(query, params);
 
@@ -987,7 +968,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 // Update Property Status API
 app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
-  const { propertyStatus } = req.body;  // 修改这里：propertystatus -> propertyStatus
+  const { propertyStatus } = req.body; 
 
   if (!propertyStatus) {
     return res.status(400).json({ message: "Property status is required" });
@@ -998,7 +979,7 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
     client = await pool.connect(); 
     const result = await client.query(
       'UPDATE properties SET propertystatus = $1 WHERE propertyid = $2 RETURNING *',
-      [propertyStatus, propertyid]  // 这里使用新的变量名
+      [propertyStatus, propertyid] 
     );
 
     if (result.rowCount === 0) {
@@ -1056,14 +1037,12 @@ app.get('/checkStatus', async(req, res) => {
   const { userid } = req.query;
   let client;
 
-  // 打印接收到的userID参数
   console.log('Received userID parameter:', userid);
   console.log('Full query parameters:', req.query);
 
   try {
     client = await pool.connect();
     
-    // 修改查询，获取更多用户信息
     const query = {
       text: 'SELECT userid, username, ustatus, uemail, ufirstname, ulastname FROM "users" WHERE "userid" = $1',
       values: [userid]
@@ -1071,18 +1050,16 @@ app.get('/checkStatus', async(req, res) => {
     
     const result = await client.query(query);
 
-    // 打印完整结果对象
     console.log('Full result object:', result);
     
-    // 如果只想查看行数据
     console.log('Rows:', result.rows);
     
     if (result.rows.length > 0) {
       const user = result.rows[0];
-      console.log('User information:', user); // 在服务器端打印用户信息
+      console.log('User information:', user); 
       res.status(200).json({ 
         ustatus: user.ustatus,
-        userInfo: user  // 可选：同时返回用户信息给客户端
+        userInfo: user  
       });
     } else {
       console.log('User not found for ID:', userid);
@@ -1092,7 +1069,6 @@ app.get('/checkStatus', async(req, res) => {
     console.error('Error fetching user status:', err);
     res.status(500).json({ message: 'Server error' });
   } finally {
-    // 确保释放数据库连接
     if (client) {
       client.release();
     }
@@ -1660,8 +1636,7 @@ app.post('/reservation/:userid', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-
-    // 插入客户详情
+    
     const customerResult = await client.query(
       `INSERT INTO reservation_customer_details 
        (rcfirstname, rclastname, rcemail, rcphoneno, rctitle)
@@ -1674,7 +1649,6 @@ app.post('/reservation/:userid', async (req, res) => {
     const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
     const reservationblocktime = new Date(reservationDateTime.getTime() + 60 * 60 * 1000);
 
-    // 插入预订详情
     const reservationResult = await client.query(
       `INSERT INTO reservation 
        (propertyid, checkindatetime, checkoutdatetime, 
@@ -1697,7 +1671,6 @@ app.post('/reservation/:userid', async (req, res) => {
 
     const reservationid = reservationResult.rows[0].reservationid;
 
-    // 记录审计日志
     await client.query(
       `INSERT INTO audit_trail 
        (timestamp, action, userid, entityid, actiontype, entitytype)
@@ -1712,7 +1685,6 @@ app.post('/reservation/:userid', async (req, res) => {
       ]
     );
 
-    // 提交事务
     await client.query('COMMIT');
 
     res.status(201).json({ 
@@ -1721,7 +1693,6 @@ app.post('/reservation/:userid', async (req, res) => {
     });
 
   } catch (err) {
-    // 如果出错，回滚事务
     if (client) {
       await client.query('ROLLBACK');
     }
@@ -1731,7 +1702,6 @@ app.post('/reservation/:userid', async (req, res) => {
       details: err.message 
     });
   } finally {
-    // 释放客户端连接
     if (client) {
       client.release();
     }
@@ -2013,7 +1983,6 @@ app.get('/cart', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // 使用 PostgreSQL 语法查询预订信息
     const result = await client.query(
       `SELECT 
         r.reservationid,
@@ -2037,7 +2006,6 @@ app.get('/cart', async (req, res) => {
       [userid]
     );
 
-    // 处理结果，格式化属性图片
     const reservations = result.rows.map(reservation => ({
       ...reservation,
       propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
@@ -2066,7 +2034,6 @@ app.get('/reservationTable', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // 查询用户信息
     const userResult = await client.query(
       'SELECT userid, usergroup FROM users WHERE username = $1',
       [username]
@@ -2109,7 +2076,6 @@ app.get('/reservationTable', async (req, res) => {
         AND r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Cancelled', 'Paid')
       `;
     } else {
-      // 如果是管理员，查看所有预订
       query = `
         SELECT 
           r.reservationid,
@@ -2512,6 +2478,47 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
   }
 });
 
+app.post('/reviews', async (req, res) => {
+  const { userid, propertyid, review } = req.body;
+  const reviewdate = new Date();
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO "reviews" ("userid", "propertyid", "review", "reviewdate") 
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [userid, propertyid, review, reviewdate]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+app.get('/getReviews', async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const query = {
+      text: "SELECT * FROM reviews,
+    };
+    
+    const result = await client.query(query);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Review not found" });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error("Error fetching reviews data:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
 
 // Start the server
 app.listen(port, () => {
