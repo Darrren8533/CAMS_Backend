@@ -2478,48 +2478,6 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
   }
 });
 
-app.post('/reviews', async (req, res) => {
-  const { userid, propertyid, review } = req.body;
-  const reviewdate = new Date();
-
-  try {
-    const result = await pool.query(
-      `INSERT INTO "reviews" ("userid", "propertyid", "review", "reviewdate") 
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [userid, propertyid, review, reviewdate]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).send(err.message);
-  }
-});
-
-app.get('/getReviews', async (req, res) => {
-  let client;
-  try {
-    client = await pool.connect();
-    
-    const query = {
-      text: "SELECT * FROM reviews,
-    };
-    
-    const result = await client.query(query);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Review not found" });
-    }
-
-    res.status(200).json(result.rows[0]);
-  } catch (err) {
-    console.error("Error fetching reviews data:", err);
-    return res.status(500).json({ message: "Internal server error" });
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-});
-
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
