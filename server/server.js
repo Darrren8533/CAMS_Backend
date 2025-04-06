@@ -878,7 +878,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
     const { propertyid } = req.params;
   const {
         propertyAddress, propertyPrice, propertyDescription, nearbyLocation,
-        propertyBedType, propertyGuestPaxNo, clusterName, categoryName
+        propertyBedType, propertyGuestPaxNo, clusterName, categoryName, facilities
   } = req.body;
 
   const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
@@ -889,7 +889,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 
       // Fetch the current status of the property
         const propertyResult = await client.query(
-            'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid FROM properties WHERE propertyid = $1',
+            'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid, facilities FROM properties WHERE propertyid = $1',
             [propertyid]
         );
   
@@ -920,8 +920,9 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
                  nearbylocation = $3, 
                  propertybedtype = $4, 
                  propertyguestpaxno = $5, 
-                 propertyimage = $6 
-             WHERE propertyid = $7`,
+                 propertyimage = $6,
+                 facilities = $7
+             WHERE propertyid = $8`,
             [
                 propertyDescription,
                 propertyAddress,
@@ -929,6 +930,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
                 propertyBedType,
                 propertyGuestPaxNo,
                 concatenatedImages,
+                facilities,
                 propertyid
             ]
         );
