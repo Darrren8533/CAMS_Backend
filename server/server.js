@@ -2478,6 +2478,22 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
   }
 });
 
+app.post('/reviews', async (req, res) => {
+  const { userID, propertyID, review } = req.body;
+  const reviewDate = new Date();
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO reviews (userid, propertyid, review, reviewdate) 
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [userID, propertyID, review, reviewDate]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
