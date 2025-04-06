@@ -10,7 +10,7 @@ const path = require('path');
 const { Pool } = require('pg');
 const sharp = require('sharp');
 require("dotenv").config({ path: path.resolve(__dirname, '.env') });
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 
 const connectionString = process.env.DATABASE_URL ;
