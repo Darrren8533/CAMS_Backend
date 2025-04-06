@@ -10,6 +10,8 @@ const path = require('path');
 const { Pool } = require('pg');
 const sharp = require('sharp');
 require("dotenv").config({ path: path.resolve(__dirname, '.env') });
+const bcrypt = require('bcrypt');
+
 
 const connectionString = process.env.DATABASE_URL ;
 
@@ -88,10 +90,12 @@ app.post('/register', async (req, res) => {
     const checkResult = await client.query(checkUserQuery);
     
     if (checkResult.rows.length > 0) {
-          return res.status(409).json({ message: 'Username or email already exists', success: false });
-      }
+      return res.status(409).json({ message: 'Username or email already exists', success: false });
+    }
 
-      const defaultAvatarBase64 = await getDefaultAvatarBase64();
+    
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const defaultAvatarBase64 = await getDefaultAvatarBase64();
 
     const insertUserQuery = {
       text: `
@@ -103,7 +107,7 @@ app.post('/register', async (req, res) => {
       `,
       values: [
         username,
-        password,
+        hashedPassword, 
         email,
         "Mr.",
         'Customer',
@@ -117,13 +121,12 @@ app.post('/register', async (req, res) => {
     
     await client.query(insertUserQuery);
 
-      res.status(201).json({ message: 'User registered successfully', success: true });
+    res.status(201).json({ message: 'User registered successfully', success: true });
   } catch (err) {
     console.error('Error during registration:', err.message);
     console.error(err.stack);
-      res.status(500).json({ message: 'Server error', success: false });
+    res.status(500).json({ message: 'Server error', success: false });
   } finally {
-    
     if (client) {
       client.release();
     }
@@ -138,31 +141,40 @@ app.post('/login', async (req, res) => {
   try {
     client = await pool.connect();
     
+  
     const result = await client.query(
-      `SELECT userid, usergroup, uactivation 
+      `SELECT userid, usergroup, uactivation, password 
        FROM users 
-       WHERE (username = $1 OR uemail = $1) 
-       AND password = $2`,
-      [username, password]
+       WHERE (username = $1 OR uemail = $1)`,
+      [username]
     );
 
     if (result.rows.length > 0) {
-      const { userid, usergroup, uactivation } = result.rows[0];
+      const { userid, usergroup, uactivation, password: hashedPassword } = result.rows[0];
+      
+      
+      const passwordMatch = await bcrypt.compare(password, hashedPassword);
+      
+      if (passwordMatch) {
+        
+        await client.query(
+          `UPDATE users
+           SET ustatus = 'login' 
+           WHERE username = $1 OR uemail = $1`,
+          [username]
+        );
 
-      await client.query(
-        `UPDATE users
-         SET ustatus = 'login' 
-         WHERE username = $1 OR uemail = $1`,
-        [username]
-      );
-
-      res.status(200).json({
-        message: 'Login Successful',
-        success: true,
-        userid: userid, 
-        usergroup: usergroup,
-        uactivation: uactivation 
-      });
+        res.status(200).json({
+          message: 'Login Successful',
+          success: true,
+          userid: userid, 
+          usergroup: usergroup,
+          uactivation: uactivation 
+        });
+      } else {
+        
+        res.status(401).json({ message: 'Invalid username or password', success: false });
+      }
     } else {
       res.status(401).json({ message: 'Invalid username or password', success: false });
     }
