@@ -1889,7 +1889,7 @@ app.get("/users/cancellation_rate", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-          (COUNT(CASE WHEN reservationstatus = 'Cancelled' THEN 1 END) * 100.0) / NULLIF(COUNT(reservationid), 0) AS cancellation_rate
+          (COUNT(CASE WHEN reservationstatus = 'Canceled' THEN 1 END) * 100.0) / NULLIF(COUNT(reservationid), 0) AS cancellation_rate
       FROM reservation;
     `);
 
@@ -2089,7 +2089,7 @@ app.get('/reservationTable', async (req, res) => {
         JOIN properties p ON r.propertyid = p.propertyid
         JOIN reservation_customer_details rc ON r.rcid = rc.rcid
         WHERE p.userid = $1
-        AND r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Cancelled', 'Paid')
+        AND r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
       `;
     } else {
       query = `
@@ -2114,17 +2114,15 @@ app.get('/reservationTable', async (req, res) => {
         FROM reservation r
         JOIN properties p ON r.propertyid = p.propertyid
         JOIN reservation_customer_details rc ON r.rcid = rc.rcid
-        WHERE r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Cancelled', 'Paid')
+        WHERE r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
       `;
     }
 
-    // 执行查询
     const result = await client.query(
       query,
       usergroup === 'Moderator' ? [userid] : []
     );
 
-    // 处理预订数据，分割属性图片
     const reservations = result.rows.map(reservation => ({
       ...reservation,
       propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
@@ -2141,21 +2139,21 @@ app.get('/reservationTable', async (req, res) => {
   }
 });
 
-// Update reservation status to "Cancelled"
+// Update reservation status to "Canceled"
 app.put('/cancelReservation/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
 
   try {
     await pool.request()
       .input('reservationid', sql.Int, reservationid)
-      .input('reservationStatus', sql.VarChar, 'Cancelled')
+      .input('reservationStatus', sql.VarChar, 'Canceled')
       .query(`
         UPDATE Reservation 
         SET reservationStatus = @reservationStatus
         WHERE reservationid = @reservationid;
       `);
 
-    res.status(200).json({ message: 'Reservation status updated to Cancelled' });
+    res.status(200).json({ message: 'Reservation status updated to Canceled' });
   } catch (err) {
     console.error('Error updating reservation status:', err);
     res.status(500).json({ message: 'Internal Server Error', details: err.message });
@@ -2177,13 +2175,13 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ message: '预订记录未找到' });
+      return res.status(404).json({ message: 'error' });
     }
 
-    res.status(200).json({ message: '预订状态更新成功' });
+    res.status(200).json({ message: 'success' });
   } catch (error) {
-    console.error('更新预订状态时出错:', error);
-    res.status(500).json({ message: '服务器内部错误' });
+    console.error('error:', error);
+    res.status(500).json({ message: 'server error' });
   } finally {
     if (client) {
       client.release();
@@ -2268,7 +2266,7 @@ app.get('/getUserInfo/:userid', async (req, res) => {
         "uphoneno"
       FROM "users"
       WHERE "userid" = $1`,
-      [userid] // 参数作为数组传递
+      [userid] 
     );
 
     if (result.rows.length === 0) {
