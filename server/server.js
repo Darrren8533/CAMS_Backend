@@ -832,6 +832,7 @@ app.get('/propertiesListingTable', async (req, res) => {
           u.ufirstname, 
           u.ulastname,
           u.username,
+          u.usergroup,
           r.rateamount,
           cl.clustername,
           c.categoryname
@@ -857,6 +858,7 @@ app.get('/propertiesListingTable', async (req, res) => {
           u.ufirstname, 
           u.ulastname,
           u.username,
+          u.usergroup
           r.rateamount,
           cl.clustername,
           c.categoryname
@@ -890,41 +892,48 @@ app.get('/propertiesListingTable', async (req, res) => {
 // Update an existing property listing by property ID
 app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), async (req, res) => {
     const { propertyid } = req.params;
-  const {
+    const {
         propertyAddress, propertyPrice, propertyDescription, nearbyLocation,
-        propertyBedType, propertyGuestPaxNo, clusterName, categoryName, facilities
-  } = req.body;
+        propertyBedType, propertyGuestPaxNo, clusterName, categoryName, facilities,
+        usergroup 
+    } = req.body;
 
-  const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
+    const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
 
     let client;
-  try {
+    try {
         client = await pool.connect();
 
-      // Fetch the current status of the property
+        // Fetch the current status of the property
         const propertyResult = await client.query(
             'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid, facilities FROM properties WHERE propertyid = $1',
             [propertyid]
         );
-  
+
         if (propertyResult.rows.length === 0) {
-          return res.status(404).json({ error: 'Property not found' });
-      }
+            return res.status(404).json({ error: 'Property not found' });
+        }
 
         let existingImages = propertyResult.rows[0].propertyimage
             ? propertyResult.rows[0].propertyimage.split(',')
-          : [];
+            : [];
 
-      // Filter out removed images
-      existingImages = existingImages.filter(image => !removedImages.includes(image));
+        // Filter out removed images
+        existingImages = existingImages.filter(image => !removedImages.includes(image));
 
-      // Add new uploaded images if any
-      if (req.files && req.files.length > 0) {
-          const newBase64Images = req.files.map(file => file.buffer.toString('base64'));
-          existingImages = [...existingImages, ...newBase64Images];
-      }
+        // Add new uploaded images if any
+        if (req.files && req.files.length > 0) {
+            const newBase64Images = req.files.map(file => file.buffer.toString('base64'));
+            existingImages = [...existingImages, ...newBase64Images];
+        }
 
-      const concatenatedImages = existingImages.join(',');
+        const concatenatedImages = existingImages.join(',');
+
+        // Determine the new status
+        let newStatus = propertyResult.rows[0].propertystatus;
+        if (usergroup === "Moderator") {
+            newStatus = "Pending";
+        }
 
         // Update the property details
         await client.query(
@@ -935,8 +944,9 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
                  propertybedtype = $4, 
                  propertyguestpaxno = $5, 
                  propertyimage = $6,
-                 facilities = $7
-             WHERE propertyid = $8`,
+                 facilities = $7,
+                 propertystatus = $8
+             WHERE propertyid = $9`,
             [
                 propertyDescription,
                 propertyAddress,
@@ -945,24 +955,25 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
                 propertyGuestPaxNo,
                 concatenatedImages,
                 facilities,
+                newStatus,
                 propertyid
             ]
         );
-  
+
         await client.query(
             `UPDATE rate 
              SET rateamount = $1 
              WHERE rateid = $2`,
             [propertyPrice, propertyResult.rows[0].rateid]
         );
-  
+
         await client.query(
             `UPDATE clusters 
              SET clustername = $1 
              WHERE clusterid = $2`,
             [clusterName, propertyResult.rows[0].clusterid]
         );
-  
+
         await client.query(
             `UPDATE categories 
              SET categoryname = $1 
@@ -970,16 +981,16 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
             [categoryName, propertyResult.rows[0].categoryid]
         );
 
-      res.status(200).json({ message: 'Property updated successfully' });
-  } catch (err) {
-      console.error('Error updating property:', err);
-      res.status(500).json({ error: 'Internal Server Error', details: err.message });
+        res.status(200).json({ message: 'Property updated successfully' });
+    } catch (err) {
+        console.error('Error updating property:', err);
+        res.status(500).json({ error: 'Internal Server Error', details: err.message });
     } finally {
         if (client) {
-          client.release(); 
+            client.release(); 
         }
     }
-  });
+});
 
 // Update Property Status API
 app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
