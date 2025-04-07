@@ -918,7 +918,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 
         // Fetch the current status of the property
         const propertyResult = await client.query(
-            'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid, facilities, userid FROM properties WHERE propertyid = $1',
+            'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid, facilities FROM properties WHERE propertyid = $1',
             [propertyid]
         );
 
