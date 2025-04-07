@@ -2508,6 +2508,38 @@ app.post('/reviews', async (req, res) => {
   }
 });
 
+// Assign role to user
+app.post('/users/assignRole', async (req, res) => {
+  const { userid, role } = req.body;
+  let client;
+
+  try {
+    client = await pool.connect();
+    
+    // Validate that the role is one of the allowed values
+    const validRoles = ['Customer', 'Moderator', 'Administrator'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role', success: false });
+    }
+
+    const query = {
+      text: `UPDATE users SET usergroup = $1 WHERE userid = $2`,
+      values: [role, userid]
+    };
+    
+    await client.query(query);
+
+    res.status(200).json({ message: 'Role assigned successfully', success: true });
+  } catch (err) {
+    console.error('Error assigning role:', err);
+    res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
