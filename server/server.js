@@ -895,7 +895,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
     const {
         propertyAddress, propertyPrice, propertyDescription, nearbyLocation,
         propertyBedType, propertyGuestPaxNo, clusterName, categoryName, facilities,
-        usergroup 
+        username 
     } = req.body;
 
     const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
@@ -904,9 +904,21 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
     try {
         client = await pool.connect();
 
+        // First get the user's group
+        const userResult = await client.query(
+            'SELECT usergroup FROM users WHERE username = $1',
+            [username]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const usergroup = userResult.rows[0].usergroup;
+
         // Fetch the current status of the property
         const propertyResult = await client.query(
-            'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid, facilities FROM properties WHERE propertyid = $1',
+            'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid, facilities, userid FROM properties WHERE propertyid = $1',
             [propertyid]
         );
 
