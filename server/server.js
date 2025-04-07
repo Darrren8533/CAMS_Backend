@@ -858,7 +858,7 @@ app.get('/propertiesListingTable', async (req, res) => {
           u.ufirstname, 
           u.ulastname,
           u.username,
-          u.usergroup
+          u.usergroup,
           r.rateamount,
           cl.clustername,
           c.categoryname
