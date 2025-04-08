@@ -2516,24 +2516,33 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
 });
 
 app.post('/reviews', async (req, res) => {
-  const { userID, propertyID, review } = req.body;
-  const reviewDate = new Date();
+    const { userid, propertyid, review } = req.body; 
+    const reviewdate = new Date(); 
 
-  if (!userID || !propertyID || !review) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+    if (!userid || !propertyid || !review) {
+        return res.status(400).json({ message: 'Missing required fields: userid, propertyid, or review' });
+    }
 
-  try {
-    const result = await pool.query(
-      `INSERT INTO reviews (userid, propertyid, review, reviewdate) 
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [userID, propertyID, review, reviewDate]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Error inserting review:', err);
-    res.status(500).send(err.message);
-  }
+    let client;
+    try {
+        client = await pool.connect(); 
+
+        const query = {
+            text: `INSERT INTO reviews (userid, propertyid, review, reviewdate) 
+                   VALUES ($1, $2, $3, $4) RETURNING reviewid;`,
+            values: [userid, propertyid, review, reviewdate]
+        };
+
+        const result = await client.query(query); 
+        res.status(201).json({ message: 'Review added successfully', reviewID: result.rows[0].reviewID });
+    } catch (error) {
+        console.error('Error adding review:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    } finally {
+        if (client) {
+            client.release(); 
+        }
+    }
 });
 
 
