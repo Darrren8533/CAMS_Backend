@@ -2534,7 +2534,7 @@ app.post('/reviews', async (req, res) => {
         };
 
         const result = await client.query(query); 
-        res.status(201).json({ message: 'Review added successfully', reviewID: result.rows[0].reviewID });
+        res.status(201).json({ message: 'Review added successfully', reviewid: result.rows[0].reviewid });
     } catch (error) {
         console.error('Error adding review:', error);
         res.status(500).json({ message: 'Internal Server Error' });
