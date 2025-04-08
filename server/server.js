@@ -2519,6 +2519,10 @@ app.post('/reviews', async (req, res) => {
   const { userID, propertyID, review } = req.body;
   const reviewDate = new Date();
 
+  if (!userID || !propertyID || !review) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
   try {
     const result = await pool.query(
       `INSERT INTO reviews (userid, propertyid, review, reviewdate) 
@@ -2527,9 +2531,11 @@ app.post('/reviews', async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
+    console.error('Error inserting review:', err);
     res.status(500).send(err.message);
   }
 });
+
 
 // Assign role to user
 app.post('/users/assignRole', async (req, res) => {
