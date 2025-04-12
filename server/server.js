@@ -1790,26 +1790,24 @@ app.get('/users/booklog', async (req, res) => {
 });
 
 app.get("/users/finance", async (req, res) => {
-  const { userID } = req.query;
+  const { userid } = req.query;
 
-  if (!userID) {
-    return res.status(400).json({ message: "Missing userID parameter" });
+  if (!userid) {
+    return res.status(400).json({ message: "Missing userid parameter" });
   }
 
   try {
-    // Step 1: Get clusterID from properties table using userID
     const clusterResult = await pool.query(
       `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
-      [userID]
+      [userid]
     );
 
     if (clusterResult.rows.length === 0) {
       return res.status(404).json({ message: "No cluster found for this user" });
     }
 
-    const clusterIDs = clusterResult.rows.map(row => row.clusterid);
+    const clusterids = clusterResult.rows.map(row => row.clusterid);
 
-    // Step 2: Get monthly revenue and reservation count filtered by clusterID
     const result = await pool.query(
       `
       SELECT 
@@ -1824,7 +1822,7 @@ app.get("/users/finance", async (req, res) => {
       GROUP BY TO_CHAR(checkindatetime, 'YYYY-MM')
       ORDER BY month;
       `,
-      [clusterIDs]
+      [clusterids]
     );
 
     if (result.rows && result.rows.length > 0) {
