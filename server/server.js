@@ -510,9 +510,9 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
       return res.status(404).json({ message: 'User not found', success: false });
     }
 
-    //  the user
+    // Delete the user
     await client.query(
-      ' FROM users WHERE userid = $1',
+      'DELETE FROM users WHERE userid = $1',
       [userid]
     );
 
@@ -526,6 +526,7 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
     }
   }
 });
+
 
 // Suspend users by user ID
 app.put('/users/suspenduser/:userid', async (req, res) => {
