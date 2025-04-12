@@ -293,7 +293,7 @@ app.get('/users/customers', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
       FROM users
       WHERE usergroup = 'Customer'
     `);
@@ -314,7 +314,7 @@ app.get('/users/owners', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus,  ugender, utitle
       FROM users
       WHERE usergroup = 'Owner'
     `);
@@ -337,7 +337,7 @@ app.get('/users/moderators', async (req, res) => {
 
     // Query to fetch moderators
     const result = await client.query(`
-      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
       FROM users
       WHERE usergroup = 'Moderator'
     `);
@@ -358,7 +358,7 @@ app.get('/users/operators', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, username, uimage,  ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ugender, ucountry, uzipcode, utitle
+      SELECT userid, username, uimage,  ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ustatus, ugender, ucountry, uzipcode, utitle
       FROM users
       WHERE usergroup IN ('Moderator', 'Administrator')
     `);
@@ -379,7 +379,7 @@ app.get('/users/administrators', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ugender, utitle
+      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
       FROM users
       WHERE usergroup = 'Administrator'
     `);
