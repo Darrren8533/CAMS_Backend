@@ -1790,17 +1790,42 @@ app.get('/users/booklog', async (req, res) => {
 });
 
 app.get("/users/finance", async (req, res) => {
+  const { userID } = req.query;
+
+  if (!userID) {
+    return res.status(400).json({ message: "Missing userID parameter" });
+  }
+
   try {
-    const result = await pool.query(`
+    // Step 1: Get clusterID from properties table using userID
+    const clusterResult = await pool.query(
+      `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+      [userID]
+    );
+
+    if (clusterResult.rows.length === 0) {
+      return res.status(404).json({ message: "No cluster found for this user" });
+    }
+
+    const clusterIDs = clusterResult.rows.map(row => row.clusterid);
+
+    // Step 2: Get monthly revenue and reservation count filtered by clusterID
+    const result = await pool.query(
+      `
       SELECT 
         TO_CHAR(checkindatetime, 'YYYY-MM') AS month,
         SUM(totalprice) AS monthlyrevenue,
         COUNT(reservationid) AS monthlyreservations
       FROM reservation
       WHERE reservationstatus = 'Accepted'
+        AND propertyid IN (
+          SELECT propertyid FROM properties WHERE clusterid = ANY($1)
+        )
       GROUP BY TO_CHAR(checkindatetime, 'YYYY-MM')
       ORDER BY month;
-    `);
+      `,
+      [clusterIDs]
+    );
 
     if (result.rows && result.rows.length > 0) {
       console.log("Monthly data:", result.rows);
@@ -1809,13 +1834,11 @@ app.get("/users/finance", async (req, res) => {
         monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservation found" });
+      res.status(404).json({ message: "No reservation found for this user" });
     }
   } catch (err) {
     console.error("Error fetching finance data:", err);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", details: err.message });
+    res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
 
