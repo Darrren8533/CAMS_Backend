@@ -26,6 +26,23 @@ const pool = new Pool({
 
 const app = express();
 
+
+const getDefaultAvatarBase64 = () => {
+  return new Promise((resolve, reject) => {
+      const defaultAvatarPath = path.join(__dirname, '/public/avatar.png'); 
+      fs.readFile(defaultAvatarPath, (err, data) => {
+          if (err) {
+              reject(err);
+          } else {
+              const base64Data = data.toString('base64');
+              resolve(base64Data);
+          }
+      });
+  });
+};
+
+const generateRandomSixDigits = () => Math.floor(100000 + Math.random() * 900000);
+
 app.get('/', async(req, res) => {
   console.log('DATABASE_URL:', process.env.DATABASE_URL);
   let client;
@@ -413,11 +430,12 @@ app.post('/users/createModerator', async (req, res) => {
       return res.status(409).json({ message: "Username or email already exists", success: false });
     }
 
-    // Insert new user into the database
+    const defaultAvatar = await getDefaultAvatarBase64();
+
     await client.query(
-      `INSERT INTO users (ufirstname, ulastname, username, password, uemail, uphoneno, ucountry, uzipcode, utitle, usergroup, ustatus, uactivation)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Mr.', 'Moderator', 'registered', 'Active')`,
-      [firstName, lastName, username, password, email, phoneNo, country, zipCode]
+      `INSERT INTO users (ufirstname, ulastname, username, password, uemail, uphoneno, ucountry, uzipcode, utitle, usergroup, ustatus, uactivation, uimage)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Mr.', 'Moderator', 'registered', 'Active', $9)`,
+      [firstName, lastName, username, password, email, phoneNo, country, zipCode, defaultAvatar]
     );
 
     res.status(201).json({ message: "User registered successfully", success: true });
@@ -426,7 +444,9 @@ app.post('/users/createModerator', async (req, res) => {
     console.error("Error during registration:", err);
     res.status(500).json({ message: "Server error", success: false });
   } finally {
-    if (client) client.release();
+    if (client) {
+      client.release();
+    }
   }
 });
 
@@ -2388,23 +2408,6 @@ app.post('/forgot-password', async (req, res) => {
   }
 });
 
-
-// Avatar 
-const getDefaultAvatarBase64 = () => {
-  return new Promise((resolve, reject) => {
-      const defaultAvatarPath = path.join(__dirname, '/public/avatar.png'); 
-      fs.readFile(defaultAvatarPath, (err, data) => {
-          if (err) {
-              reject(err);
-          } else {
-              const base64Data = data.toString('base64');
-              resolve(base64Data);
-          }
-      });
-  });
-};
-
-const generateRandomSixDigits = () => Math.floor(100000 + Math.random() * 900000);
 
 // Get User Details
 app.get('/users/:userid', async (req, res) => {
