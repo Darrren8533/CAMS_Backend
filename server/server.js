@@ -1905,32 +1905,30 @@ app.get("/users/occupancy_rate", async (req, res) => {
 });
 
 app.get("/users/RevPAR", async (req, res) => {
-  const { userID } = req.query;
+  const { userid } = req.query;
 
   if (!userID) {
-    return res.status(400).json({ message: "Missing userID parameter" });
+    return res.status(400).json({ message: "Missing userid parameter" });
   }
 
   try {
-    // Step 1: Get clusterIDs for the user
     const clusterResult = await pool.query(
       `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
-      [userID]
+      [userid]
     );
 
     if (clusterResult.rows.length === 0) {
       return res.status(404).json({ message: "No cluster found for this user" });
     }
 
-    const clusterIDs = clusterResult.rows.map(row => row.clusterid);
+    const clusterids = clusterResult.rows.map(row => row.clusterid);
 
-    // Step 2: Get the count of available properties under the cluster (constant for all months)
     const propertyCountResult = await pool.query(
       `SELECT COUNT(*) AS available_properties 
        FROM properties 
        WHERE propertystatus = 'Available' 
          AND clusterid = ANY($1);`,
-      [clusterIDs]
+      [clusterids]
     );
 
     const availableProperties = parseInt(propertyCountResult.rows[0].available_properties);
@@ -1939,7 +1937,6 @@ app.get("/users/RevPAR", async (req, res) => {
       return res.status(404).json({ message: "No available properties found" });
     }
 
-    // Step 3: Calculate monthly RevPAR
     const revparResult = await pool.query(
       `
       SELECT 
@@ -1958,7 +1955,7 @@ app.get("/users/RevPAR", async (req, res) => {
       ORDER BY 
         month;
       `,
-      [clusterIDs, availableProperties]
+      [clusterids, availableProperties]
     );
 
     if (revparResult.rows.length > 0) {
