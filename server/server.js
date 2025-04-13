@@ -1907,7 +1907,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
 app.get("/users/RevPAR", async (req, res) => {
   const { userid } = req.query;
 
-  if (!userID) {
+  if (!userid) {
     return res.status(400).json({ message: "Missing userid parameter" });
   }
 
@@ -1927,8 +1927,9 @@ app.get("/users/RevPAR", async (req, res) => {
       `SELECT COUNT(*) AS available_properties 
        FROM properties 
        WHERE propertystatus = 'Available' 
-         AND clusterid = ANY($1);`,
-      [clusterids]
+         AND clusterid = ANY($1)
+         AND userid = $2;`,
+      [clusterids, userid]
     );
 
     const availableProperties = parseInt(propertyCountResult.rows[0].available_properties);
