@@ -1905,34 +1905,72 @@ app.get("/users/occupancy_rate", async (req, res) => {
 });
 
 app.get("/users/RevPAR", async (req, res) => {
+  const { userID } = req.query;
+
+  if (!userID) {
+    return res.status(400).json({ message: "Missing userID parameter" });
+  }
+
   try {
-    const result = await pool.query(`
+    // Step 1: Get clusterIDs for the user
+    const clusterResult = await pool.query(
+      `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+      [userID]
+    );
+
+    if (clusterResult.rows.length === 0) {
+      return res.status(404).json({ message: "No cluster found for this user" });
+    }
+
+    const clusterIDs = clusterResult.rows.map(row => row.clusterid);
+
+    // Step 2: Get the count of available properties under the cluster (constant for all months)
+    const propertyCountResult = await pool.query(
+      `SELECT COUNT(*) AS available_properties 
+       FROM properties 
+       WHERE propertystatus = 'Available' 
+         AND clusterid = ANY($1);`,
+      [clusterIDs]
+    );
+
+    const availableProperties = parseInt(propertyCountResult.rows[0].available_properties);
+
+    if (availableProperties === 0) {
+      return res.status(404).json({ message: "No available properties found" });
+    }
+
+    // Step 3: Calculate monthly RevPAR
+    const revparResult = await pool.query(
+      `
       SELECT 
-          COALESCE(SUM(r.totalprice), 0) / NULLIF(COUNT(p.propertyid), 0) AS revpar
+        TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+        COALESCE(SUM(r.totalprice), 0) / $2 AS revpar
       FROM 
-          properties p
-      LEFT JOIN 
-          reservation r
-      ON 
-          p.propertyid = r.propertyid
+        reservation r
+      INNER JOIN 
+        properties p ON r.propertyid = p.propertyid
       WHERE 
-          p.propertystatus = 'Available';
-    `);
+        p.propertystatus = 'Available'
+        AND p.clusterid = ANY($1)
+        AND r.reservationstatus = 'Accepted'
+      GROUP BY 
+        TO_CHAR(r.checkindatetime, 'YYYY-MM')
+      ORDER BY 
+        month;
+      `,
+      [clusterIDs, availableProperties]
+    );
 
-    if (result.rows.length > 0) {
-      console.log("RevPAR result:", result.rows);
-
+    if (revparResult.rows.length > 0) {
       res.json({
-        monthlyData: result.rows,
+        monthlyData: revparResult.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservation found" });
+      res.status(404).json({ message: "No reservation data found for RevPAR" });
     }
   } catch (err) {
-    console.error("Error fetching RevPAR data:", err);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", details: err.message });
+    console.error("Error fetching monthly RevPAR data:", err);
+    res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
 
