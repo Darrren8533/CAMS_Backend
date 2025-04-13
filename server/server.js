@@ -1731,24 +1731,10 @@ app.post('/reservation/:userid', async (req, res) => {
 
     const reservationid = reservationResult.rows[0].reservationid;
 
-    await client.query(
-      `INSERT INTO audit_trail 
-       (timestamp, action, userid, entityid, actiontype, entitytype)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        new Date(),
-        `Booking created for reservationid ${reservationid} and propertyid ${propertyid}`,
-        userid,
-        userid,
-        'abc',
-        'abc'
-      ]
-    );
-
     await client.query('COMMIT');
 
     res.status(201).json({ 
-      message: 'Reservation and Audit Log created successfully', 
+      message: 'Reservation created successfully', 
       reservationid 
     });
 
