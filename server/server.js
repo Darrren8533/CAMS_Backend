@@ -2039,28 +2039,58 @@ app.get("/users/cancellation_rate", async (req, res) => {
 });
 
 app.get("/users/customer_retention_rate", async (req, res) => {
+  const { userid } = req.query;
+
+  if (!userid) {
+    return res.status(400).json({ message: "Missing userid parameter" });
+  }
+
   try {
-    const result = await pool.query(`
+    const clusterResult = await pool.query(
+      `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+      [userid]
+    );
+
+    if (clusterResult.rows.length === 0) {
+      return res.status(404).json({ message: "No cluster found for this user" });
+    }
+
+    const clusterids = clusterResult.rows.map(row => row.clusterid);
+
+    const result = await pool.query(
+      `
+      WITH monthly_users AS (
+        SELECT 
+          TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+          r.userid
+        FROM reservation r
+        INNER JOIN properties p ON r.propertyid = p.propertyid
+        WHERE p.clusterid = ANY($1)
+      ),
+      all_users AS (
+        SELECT DISTINCT userid FROM users
+      )
       SELECT 
-          (COUNT(DISTINCT r.userid) * 100.0) / COUNT(DISTINCT u.userid) AS customer_retention_rate
-      FROM users u
-      LEFT JOIN reservation r ON u.userid = r.userid;
-    `);
+        mu.month,
+        (COUNT(DISTINCT mu.userid) * 100.0) / NULLIF((SELECT COUNT(*) FROM all_users), 0) AS customer_retention_rate
+      FROM monthly_users mu
+      GROUP BY mu.month
+      ORDER BY mu.month;
+      `,
+      [clusterids]
+    );
 
     if (result.rows.length > 0) {
       console.log("Customer Retention Rate result:", result.rows);
-
       res.json({
         monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservation found" });
+      res.status(404).json({ message: "No retention data found" });
     }
   } catch (err) {
     console.error("Error fetching customer retention rate data:", err);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", details: err.message });
+    res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
 
