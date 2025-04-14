@@ -1973,27 +1973,53 @@ app.get("/users/RevPAR", async (req, res) => {
 });
 
 app.get("/users/cancellation_rate", async (req, res) => {
+  const { userid } = req.query;
+
+  if (!userid) {
+    return res.status(400).json({ message: "Missing userid parameter" });
+  }
+
   try {
-    const result = await pool.query(`
+    const clusterResult = await pool.query(
+      `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+      [userid]
+    );
+
+    if (clusterResult.rows.length === 0) {
+      return res.status(404).json({ message: "No cluster found for this user" });
+    }
+
+    const clusterids = clusterResult.rows.map(row => row.clusterid);
+
+    const cancellationRateResult = await pool.query(
+      `
       SELECT 
-          (COUNT(CASE WHEN reservationstatus = 'Canceled' THEN 1 END) * 100.0) / NULLIF(COUNT(reservationid), 0) AS cancellation_rate
-      FROM reservation;
-    `);
+        TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+        (COUNT(CASE WHEN r.reservationstatus = 'Canceled' THEN 1 END) * 100.0) / NULLIF(COUNT(r.reservationid), 0) AS cancellation_rate
+      FROM 
+        reservation r
+      INNER JOIN 
+        properties p ON r.propertyid = p.propertyid
+      WHERE 
+        p.clusterid = ANY($1)
+      GROUP BY 
+        TO_CHAR(r.checkindatetime, 'YYYY-MM')
+      ORDER BY 
+        month;
+      `,
+      [clusterids]
+    );
 
-    if (result.rows.length > 0) {
-      console.log("Cancellation Rate result:", result.rows);
-
+    if (cancellationRateResult.rows.length > 0) {
       res.json({
-        monthlyData: result.rows,
+        monthlyData: cancellationRateResult.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservation found" });
+      res.status(404).json({ message: "No cancellation rate data found" });
     }
   } catch (err) {
     console.error("Error fetching cancellation rate data:", err);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", details: err.message });
+    res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
 
