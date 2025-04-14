@@ -1848,7 +1848,24 @@ app.get("/users/finance", async (req, res) => {
 });
 
 app.get("/users/occupancy_rate", async (req, res) => {
+  const { userid } = req.query;
+
+  if (!userid) {
+    return res.status(400).json({ message: "Missing userid parameter" });
+  }
+
   try {
+    const clusterResult = await pool.query(
+      `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+      [userid]
+    );
+
+    if (clusterResult.rows.length === 0) {
+      return res.status(404).json({ message: "No cluster found for user" });
+    }
+
+    const clusterids = clusterResult.rows.map(row => row.clusterid);
+
     const result = await pool.query(`
       WITH monthly_data AS (
           SELECT 
@@ -1857,7 +1874,9 @@ app.get("/users/occupancy_rate", async (req, res) => {
               SUM(r.totalprice) AS monthly_revenue,
               COUNT(r.reservationid) AS monthly_reservations
           FROM reservation r
+          JOIN properties p ON r.propertyid = p.propertyid
           WHERE r.reservationstatus = 'Accepted'
+          AND p.clusterid = ANY($1)
           GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
       ),
       total_available_nights AS (
@@ -1873,6 +1892,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
           ) gs
           CROSS JOIN properties p
           WHERE p.propertystatus = 'Available'
+          AND p.clusterid = ANY($1)
           GROUP BY gs.month
       )
       SELECT 
@@ -1885,22 +1905,17 @@ app.get("/users/occupancy_rate", async (req, res) => {
       FROM monthly_data md
       JOIN total_available_nights tan ON md.month = tan.month
       ORDER BY md.month;
-    `);
+    `, [clusterids]);
 
     if (result.rows.length > 0) {
       console.log("Monthly data with occupancy rate:", result.rows);
-
-      res.json({
-        monthlyData: result.rows,
-      });
+      res.json({ monthlyData: result.rows });
     } else {
       res.status(404).json({ message: "No reservation found" });
     }
   } catch (err) {
     console.error("Error fetching occupancy rate data:", err);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", details: err.message });
+    res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
 
