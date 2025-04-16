@@ -2120,7 +2120,7 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
         AVG(p.rating) AS guest_satisfaction_score
       FROM reservation r
       INNER JOIN properties p ON r.propertyid = p.propertyid
-      WHERE p.clusterid = ANY($1) AND r.rating IS NOT NULL
+      WHERE p.clusterid = ANY($1) AND p.rating IS NOT NULL
       GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
       ORDER BY month;
       `,
