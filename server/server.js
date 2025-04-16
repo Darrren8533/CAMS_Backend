@@ -2095,25 +2095,49 @@ app.get("/users/customer_retention_rate", async (req, res) => {
 });
 
 app.get("/users/guest_satisfaction_score", async (req, res) => {
+  const { userid } = req.query;
+
+  if (!userid) {
+    return res.status(400).json({ message: "Missing userid parameter" });
+  }
+
   try {
-    const result = await pool.query(`
-      SELECT propertyid, AVG(rating) AS guest_satisfaction_score FROM properties WHERE propertystatus = 'Available' GROUP BY propertyid; 
-    `);
+    const clusterResult = await pool.query(
+      `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+      [userid]
+    );
+
+    if (clusterResult.rows.length === 0) {
+      return res.status(404).json({ message: "No cluster found for this user" });
+    }
+
+    const clusterids = clusterResult.rows.map(row => row.clusterid);
+
+    const result = await pool.query(
+      `
+      SELECT 
+        TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+        AVG(r.rating) AS guest_satisfaction_score
+      FROM reservation r
+      INNER JOIN properties p ON r.propertyid = p.propertyid
+      WHERE p.clusterid = ANY($1) AND r.rating IS NOT NULL
+      GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
+      ORDER BY month;
+      `,
+      [clusterids]
+    );
 
     if (result.rows.length > 0) {
       console.log("Guest Satisfaction Score result:", result.rows);
-
       res.json({
         monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: "No rating found" });
+      res.status(404).json({ message: "No rating data found" });
     }
   } catch (err) {
     console.error("Error fetching guest satisfaction score data:", err);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", details: err.message });
+    res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
 
