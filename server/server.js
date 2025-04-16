@@ -2142,30 +2142,49 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
 });
 
 app.get("/users/alos", async (req, res) => {
+  const { userid } = req.query;
+
+  if (!userid) {
+    return res.status(400).json({ message: "Missing userid parameter" });
+  }
+
   try {
-    const result = await pool.query(`
+    const clusterResult = await pool.query(
+      `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+      [userid]
+    );
+
+    if (clusterResult.rows.length === 0) {
+      return res.status(404).json({ message: "No cluster found for this user" });
+    }
+
+    const clusterids = clusterResult.rows.map((row) => row.clusterid);
+
+    const result = await pool.query(
+      `
       SELECT 
-          p.propertyid,
-          COALESCE(SUM(EXTRACT(DAY FROM r.checkoutdatetime - r.checkIndatetime)) / NULLIF(COUNT(r.reservationid), 0), 0) AS average_length_of_stay
-      FROM properties p WHERE p.propertystatus = 'Available'
-      LEFT JOIN reservation r ON p.propertyid = r.propertyid
-      GROUP BY p.propertyid; 
-    `);
+        TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+        COALESCE(SUM(EXTRACT(DAY FROM r.checkoutdatetime - r.checkindatetime)) / NULLIF(COUNT(r.reservationid), 0), 0) AS average_length_of_stay
+      FROM reservation r
+      INNER JOIN properties p ON r.propertyid = p.propertyid
+      WHERE p.clusterid = ANY($1)
+      GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
+      ORDER BY month;
+      `,
+      [clusterids]
+    );
 
     if (result.rows.length > 0) {
       console.log("Average Length of Stay result:", result.rows);
-
       res.json({
         monthlyData: result.rows,
       });
     } else {
-      res.status(404).json({ message: "No reservation found" });
+      res.status(404).json({ message: "No ALOS data found" });
     }
   } catch (err) {
-    console.error("Error fetching average length of stay data:", err);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", details: err.message });
+    console.error("Error fetching ALOS data:", err);
+    res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
 
