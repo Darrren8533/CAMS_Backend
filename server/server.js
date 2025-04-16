@@ -2198,104 +2198,79 @@ app.get('/cart', async (req, res) => {
 
 // Fetch all reservations (Dashboard)
 app.get('/reservationTable', async (req, res) => {
-  const username = req.query.username;
+    const username = req.query.username;
 
-  if (!username) {
-    return res.status(400).json({ error: 'Username is required' });
-  }
-
-  let client;
-  try {
-    client = await pool.connect();
-    
-    const userResult = await client.query(
-      'SELECT userid, usergroup FROM users WHERE username = $1',
-      [username]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
     }
 
-    const userid = userResult.rows[0].userid;
-    const usergroup = userResult.rows[0].usergroup;
+    let client;
+    try {
+        client = await pool.connect();
 
-    let query;
+        const userResult = await client.query(
+            'SELECT userid, usergroup FROM users WHERE username = $1',
+            [username]
+        );
 
-    if (usergroup === 'Moderator') {
-      // If user is a Moderator, fetch properties created by that user only
-      query = `
-      SELECT 
-          r.reservationid,
-          r.propertyid,
-          p.propertyaddress, 
-          p.propertyimage,
-          p.userid,
-          r.checkindatetime,
-          r.checkoutdatetime,
-          r.reservationblocktime,
-        r.request,
-          r.totalprice,
-          r.reservationstatus,
-          r.rcid,
-          rc.rcfirstname,
-          rc.rclastname,
-          rc.rcemail,
-          rc.rcphoneno,
-          rc.rctitle
-        FROM reservation r
-        JOIN properties p ON r.propertyid = p.propertyid
-        JOIN reservation_customer_details rc ON r.rcid = rc.rcid
-        WHERE p.userid = $1
-        AND r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
-      `;
-    } else {
-      query = `
-        SELECT 
-          r.reservationid,
-          r.propertyid,
-          p.propertyaddress, 
-          p.propertyimage,
-          p.userid,
-          r.checkindatetime,
-          r.checkoutdatetime,
-          r.reservationblocktime,
-          r.request,
-          r.totalprice,
-          r.reservationstatus,
-          r.rcid,
-          rc.rcfirstname,
-          rc.rclastname,
-          rc.rcemail,
-          rc.rcphoneno,
-          rc.rctitle
-        FROM reservation r
-        JOIN properties p ON r.propertyid = p.propertyid
-        JOIN reservation_customer_details rc ON r.rcid = rc.rcid
-        WHERE r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
-      `;
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const userid = userResult.rows[0].userid;
+        const usergroup = userResult.rows[0].usergroup;
+
+        let query = `
+            SELECT 
+                r.reservationid,
+                r.propertyid,
+                p.propertyaddress, 
+                p.propertyimage,
+                p.userid,
+                u.username AS property_owner_username, -- Fetch the property owner's username
+                r.checkindatetime,
+                r.checkoutdatetime,
+                r.reservationblocktime,
+                r.request,
+                r.totalprice,
+                r.reservationstatus,
+                r.rcid,
+                rc.rcfirstname,
+                rc.rclastname,
+                rc.rcemail,
+                rc.rcphoneno,
+                rc.rctitle
+            FROM reservation r
+            JOIN properties p ON r.propertyid = p.propertyid
+            JOIN users u ON p.userid = u.userid -- Join with users to get the username
+            JOIN reservation_customer_details rc ON r.rcid = rc.rcid
+            WHERE r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
+        `;
+
+        // Add filtering for Moderators
+        if (usergroup === 'Moderator') {
+            query += ' AND p.userid = $1';
+        }
+
+        const params = usergroup === 'Moderator' ? [userid] : [];
+        const result = await client.query(query, params);
+
+        const reservations = result.rows.map(reservation => ({
+            ...reservation,
+            propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
+        }));
+
+        res.status(200).json({ reservations });
+    } catch (err) {
+        console.error('Error fetching reservation data for reservation table:', err);
+        res.status(500).json({ message: 'Internal Server Error', details: err.message });
+    } finally {
+        if (client) {
+            client.release();
+        }
     }
-
-    const result = await client.query(
-      query,
-      usergroup === 'Moderator' ? [userid] : []
-    );
-
-    const reservations = result.rows.map(reservation => ({
-      ...reservation,
-      propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
-    }));
-
-    res.status(200).json({ reservations });
-  } catch (err) {
-    console.error('Error fetching reservation data for reservation table:', err);
-    res.status(500).json({ message: 'Internal Server Error', details: err.message });
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
 });
+
 
 // Update reservation status to "Canceled"
 app.put('/cancelReservation/:reservationid', async (req, res) => {
