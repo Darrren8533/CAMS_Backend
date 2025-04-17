@@ -751,75 +751,20 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
 });
 
 // Fetch list of all property listings (Product)
-app.get('/product', async (req, res) => {
-  let client;
+export const fetchProduct = async () => {
   try {
-    client = await pool.connect();
-    
-    // Get the page and limit from query parameters
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 8;
-    const offset = (page - 1) * limit;
-    
-    // Add LIMIT and OFFSET to your query
-    const query = `
-      SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
-      FROM properties p
-      JOIN rate r ON p.rateid = r.rateid
-      JOIN categories c ON p.categoryid = c.categoryid
-      JOIN clusters cl ON p.clusterid = cl.clusterid
-      JOIN users u ON p.userid = u.userid
-      LEFT JOIN reservation res ON p.propertyid = res.propertyid
-      WHERE p.propertystatus = 'Available'
-      LIMIT $1 OFFSET $2
-    `;
-    
-    // Pass the limit and offset as parameters
-    const result = await client.query(query, [limit, offset]);
-    
-    if (result.rows.length > 0) {
-      console.log(`Fetched page ${page} with ${result.rows.length} items`);
-      console.log('Sample property object from database:');
-      console.log(JSON.stringify(result.rows[0], null, 2));
-    } else {
-      console.log(`No properties found for page ${page}`);
-    }
-    
-    const properties = result.rows.map(property => {
-      console.log(`Property ID ${property.propertyid} - Original image data:`, 
-                  property.propertyimage ? property.propertyimage.substring(0, 50) + '...' : 'No image');
-      
-      const processedProperty = {
-        ...property,
-        propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
-      };
-      
-      console.log(`Property ID ${property.propertyid} - Processed image array length:`, 
-                  processedProperty.propertyimage.length);
-      
-      return processedProperty;
-    });
-    
-    if (properties.length > 0) {
-      console.log('Sample processed property object:');
-      const sampleProperty = {...properties[0]};
-      if (sampleProperty.propertyimage && sampleProperty.propertyimage.length > 0) {
-        sampleProperty.propertyimage = [`${sampleProperty.propertyimage[0].substring(0, 50)}... (truncated)`, 
-                                       `and ${sampleProperty.propertyimage.length - 1} more images`];
-      }
-      console.log(JSON.stringify(sampleProperty, null, 2));
-    }
+    const response = await fetch(`${API_URL}/product`);
 
-    res.status(200).json(properties);
-  } catch (err) {
-    console.error('Error fetching properties: ', err);
-    res.status(500).json({ error: 'Internal Server Error', details: err.message });
-  } finally {
-    if (client) {
-      client.release();
+    if (!response.ok) {
+      throw new Error('Failed to fetch properties');
     }
+    const data = await response.json();
+    return data; 
+  } catch (error) {
+    console.error('Error fetching properties:', error);
+    throw error; 
   }
-});
+};
 
 // Fetch list of all property listings (Dashboard)
 app.get('/propertiesListingTable', async (req, res) => {
