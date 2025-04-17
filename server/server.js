@@ -1757,30 +1757,16 @@ app.post('/reservation/:userid', async (req, res) => {
 // Fetch Book and Pay Log
 app.get('/users/booklog', async (req, res) => {
   try {
-    const result = await pool.request().query(`
+    const result = await pool.query(`
       SELECT 
         a.userid, 
         a.timestamp, 
         a.action,
         CASE 
-          WHEN CHARINDEX('propertyid', a.action) > 0 
-          THEN
+          WHEN POSITION('propertyid' IN a.action) > 0 THEN
             CAST(
-              LEFT(
-                LTRIM(
-                  SUBSTRING(
-                    a.action,
-                    CHARINDEX('propertyid ', a.action) + 10, 
-                    LEN(a.action) - CHARINDEX('propertyid ', a.action) + 10
-                  )
-                ),
-                CHARINDEX(' ', 
-                  LTRIM(SUBSTRING(
-                    a.action,
-                    CHARINDEX('propertyid ', a.action) + 10, 
-                    LEN(a.action) - CHARINDEX('propertyid ', a.action) + 10
-                  )) + ' ') - 1
-              ) AS INT
+              REGEXP_MATCHES(a.action, 'propertyid\\s+(\\d+)', 'g') [1]
+              AS INTEGER
             )
           ELSE NULL 
         END AS propertyid
@@ -1789,7 +1775,7 @@ app.get('/users/booklog', async (req, res) => {
       ORDER BY a.timestamp DESC
     `);
 
-    res.json(result.recordset);
+    res.json(result.rows);
   } catch (err) {
     console.error('Error fetching Book Log:', err);
     res.status(500).json({ message: 'Internal Server Error', details: err.message });
