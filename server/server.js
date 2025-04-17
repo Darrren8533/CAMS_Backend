@@ -751,6 +751,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
 });
 
 // Fetch list of all property listings (Product)
+// Fetch list of all property listings (Product)
 app.get('/product', async (req, res) => {
   let client;
   try {
