@@ -758,25 +758,35 @@ app.get('/product', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     const query = `
-    WITH paginated_properties AS (
-      SELECT propertyid
-      FROM properties
-      WHERE propertystatus = 'Available'
-      ORDER BY propertyid
-      LIMIT $1 OFFSET $2
-    )
-    SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
-    FROM paginated_properties pp
-    JOIN properties p ON p.propertyid = pp.propertyid
-    JOIN rate r ON p.rateid = r.rateid
-    JOIN categories c ON p.categoryid = c.categoryid
-    JOIN clusters cl ON p.clusterid = cl.clusterid
-    JOIN users u ON p.userid = u.userid
-    LEFT JOIN reservation res ON p.propertyid = res.propertyid
+      WITH paginated_properties AS (
+        SELECT propertyid
+        FROM properties
+        WHERE propertystatus = 'Available'
+        ORDER BY propertyid
+        LIMIT $1 OFFSET $2
+      )
+      SELECT 
+        p.*, 
+        u.username, 
+        u.uimage, 
+        r.rateamount, 
+        c.categoryname, 
+        cl.clustername, 
+        res.reservationid, 
+        res.checkindatetime, 
+        res.checkoutdatetime, 
+        res.reservationstatus
+      FROM paginated_properties pp
+      JOIN properties p ON p.propertyid = pp.propertyid
+      JOIN rate r ON p.rateid = r.rateid
+      JOIN categories c ON p.categoryid = c.categoryid
+      JOIN clusters cl ON p.clusterid = cl.clusterid
+      JOIN users u ON p.userid = u.userid
+      LEFT JOIN reservation res ON p.propertyid = res.propertyid
     `;
-    
+
     const result = await client.query(query, [limit, offset]);
 
     const properties = result.rows.map(property => ({
@@ -792,6 +802,7 @@ app.get('/product', async (req, res) => {
     if (client) client.release();
   }
 });
+
 
 // Fetch list of all property listings (Dashboard)
 app.get('/propertiesListingTable', async (req, res) => {
