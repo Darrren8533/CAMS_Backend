@@ -768,7 +768,6 @@ app.get('/product', async (req, res) => {
       JOIN users u ON p.userid = u.userid
       LEFT JOIN reservation res ON p.propertyid = res.propertyid
       WHERE p.propertystatus = 'Available'
-      ORDER BY p.propertyid
       LIMIT $1 OFFSET $2
     `;
     
