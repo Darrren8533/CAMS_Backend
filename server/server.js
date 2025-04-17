@@ -756,6 +756,12 @@ app.get('/product', async (req, res) => {
   try {
     client = await pool.connect();
     
+    // Get the page and limit from query parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 8;
+    const offset = (page - 1) * limit;
+    
+    // Add LIMIT and OFFSET to your query
     const query = `
       SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
       FROM properties p
@@ -765,15 +771,18 @@ app.get('/product', async (req, res) => {
       JOIN users u ON p.userid = u.userid
       LEFT JOIN reservation res ON p.propertyid = res.propertyid
       WHERE p.propertystatus = 'Available'
+      LIMIT $1 OFFSET $2
     `;
     
-    const result = await client.query(query);
+    // Pass the limit and offset as parameters
+    const result = await client.query(query, [limit, offset]);
     
     if (result.rows.length > 0) {
+      console.log(`Fetched page ${page} with ${result.rows.length} items`);
       console.log('Sample property object from database:');
       console.log(JSON.stringify(result.rows[0], null, 2));
     } else {
-      console.log('No properties found');
+      console.log(`No properties found for page ${page}`);
     }
     
     const properties = result.rows.map(property => {
@@ -781,7 +790,7 @@ app.get('/product', async (req, res) => {
                   property.propertyimage ? property.propertyimage.substring(0, 50) + '...' : 'No image');
       
       const processedProperty = {
-      ...property,
+        ...property,
         propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
       };
       
