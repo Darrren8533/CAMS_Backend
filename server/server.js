@@ -751,20 +751,66 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
 });
 
 // Fetch list of all property listings (Product)
-export const fetchProduct = async () => {
+app.get('/product', async (req, res) => {
+  let client;
   try {
-    const response = await fetch(`${API_URL}/product`);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch properties');
+    client = await pool.connect();
+    
+    const query = `
+      SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
+      FROM properties p
+      JOIN rate r ON p.rateid = r.rateid
+      JOIN categories c ON p.categoryid = c.categoryid
+      JOIN clusters cl ON p.clusterid = cl.clusterid
+      JOIN users u ON p.userid = u.userid
+      LEFT JOIN reservation res ON p.propertyid = res.propertyid
+      WHERE p.propertystatus = 'Available'
+    `;
+    
+    const result = await client.query(query);
+    
+    if (result.rows.length > 0) {
+      console.log('Sample property object from database:');
+      console.log(JSON.stringify(result.rows[0], null, 2));
+    } else {
+      console.log('No properties found');
     }
-    const data = await response.json();
-    return data; 
-  } catch (error) {
-    console.error('Error fetching properties:', error);
-    throw error; 
+    
+    const properties = result.rows.map(property => {
+      console.log(`Property ID ${property.propertyid} - Original image data:`, 
+                  property.propertyimage ? property.propertyimage.substring(0, 50) + '...' : 'No image');
+      
+      const processedProperty = {
+      ...property,
+        propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
+      };
+      
+      console.log(`Property ID ${property.propertyid} - Processed image array length:`, 
+                  processedProperty.propertyimage.length);
+      
+      return processedProperty;
+    });
+    
+    if (properties.length > 0) {
+      console.log('Sample processed property object:');
+      const sampleProperty = {...properties[0]};
+      if (sampleProperty.propertyimage && sampleProperty.propertyimage.length > 0) {
+        sampleProperty.propertyimage = [`${sampleProperty.propertyimage[0].substring(0, 50)}... (truncated)`, 
+                                       `and ${sampleProperty.propertyimage.length - 1} more images`];
+      }
+      console.log(JSON.stringify(sampleProperty, null, 2));
+    }
+
+    res.status(200).json(properties);
+  } catch (err) {
+    console.error('Error fetching properties: ', err);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
-};
+});
 
 // Fetch list of all property listings (Dashboard)
 app.get('/propertiesListingTable', async (req, res) => {
