@@ -767,7 +767,7 @@ app.get('/product', async (req, res) => {
       ORDER BY propertyid
       LIMIT $1 OFFSET $2
     )
-    SELECT p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername,res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
+    SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
     FROM paginated_properties pp
     JOIN properties p ON p.propertyid = pp.propertyid
     JOIN rate r ON p.rateid = r.rateid
