@@ -756,7 +756,7 @@ app.get('/product', async (req, res) => {
   try {
     client = await pool.connect();
     
-    const query = 
+    const query = `
       SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
       FROM properties p
       JOIN rate r ON p.rateid = r.rateid
@@ -765,7 +765,7 @@ app.get('/product', async (req, res) => {
       JOIN users u ON p.userid = u.userid
       LEFT JOIN reservation res ON p.propertyid = res.propertyid
       WHERE p.propertystatus = 'Available'
-    ;
+    `;
     
     const result = await client.query(query);
     
@@ -777,7 +777,7 @@ app.get('/product', async (req, res) => {
     }
     
     const properties = result.rows.map(property => {
-      console.log(Property ID ${property.propertyid} - Original image data:, 
+      console.log(`Property ID ${property.propertyid} - Original image data:`, 
                   property.propertyimage ? property.propertyimage.substring(0, 50) + '...' : 'No image');
       
       const processedProperty = {
@@ -785,7 +785,7 @@ app.get('/product', async (req, res) => {
         propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
       };
       
-      console.log(Property ID ${property.propertyid} - Processed image array length:, 
+      console.log(`Property ID ${property.propertyid} - Processed image array length:`, 
                   processedProperty.propertyimage.length);
       
       return processedProperty;
@@ -795,8 +795,8 @@ app.get('/product', async (req, res) => {
       console.log('Sample processed property object:');
       const sampleProperty = {...properties[0]};
       if (sampleProperty.propertyimage && sampleProperty.propertyimage.length > 0) {
-        sampleProperty.propertyimage = [${sampleProperty.propertyimage[0].substring(0, 50)}... (truncated), 
-                                       and ${sampleProperty.propertyimage.length - 1} more images];
+        sampleProperty.propertyimage = [`${sampleProperty.propertyimage[0].substring(0, 50)}... (truncated)`, 
+                                       `and ${sampleProperty.propertyimage.length - 1} more images`];
       }
       console.log(JSON.stringify(sampleProperty, null, 2));
     }
