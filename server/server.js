@@ -760,16 +760,21 @@ app.get('/product', async (req, res) => {
     client = await pool.connect();
     
     const query = `
-      SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
-      FROM properties p
-      JOIN rate r ON p.rateid = r.rateid
-      JOIN categories c ON p.categoryid = c.categoryid
-      JOIN clusters cl ON p.clusterid = cl.clusterid
-      JOIN users u ON p.userid = u.userid
-      LEFT JOIN reservation res ON p.propertyid = res.propertyid
-      WHERE p.propertystatus = 'Available'
-      ORDER BY p.propertyid
+    WITH paginated_properties AS (
+      SELECT propertyid
+      FROM properties
+      WHERE propertystatus = 'Available'
+      ORDER BY propertyid
       LIMIT $1 OFFSET $2
+    )
+    SELECT p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername,res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
+    FROM paginated_properties pp
+    JOIN properties p ON p.propertyid = pp.propertyid
+    JOIN rate r ON p.rateid = r.rateid
+    JOIN categories c ON p.categoryid = c.categoryid
+    JOIN clusters cl ON p.clusterid = cl.clusterid
+    JOIN users u ON p.userid = u.userid
+    LEFT JOIN reservation res ON p.propertyid = res.propertyid
     `;
     
     const result = await client.query(query, [limit, offset]);
