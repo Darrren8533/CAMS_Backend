@@ -2699,6 +2699,7 @@ app.post('/users/assignRole', async (req, res) => {
   }
 });
 
+// Audit Trails
 app.get("/auditTrails", async (req, res) => {
   const { userid } = req.query;
 
