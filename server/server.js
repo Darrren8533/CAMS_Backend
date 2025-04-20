@@ -86,12 +86,11 @@ process.on('SIGINT', async () => {
   process.exit();
 });
 
-
-
 // Registration
 app.post('/register', async (req, res) => {
   const { firstName, lastName, username, password, email } = req.body;
   let client;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   
   try {
     client = await pool.connect();
