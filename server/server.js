@@ -2667,7 +2667,6 @@ app.post('/reviews', async (req, res) => {
     }
 });
 
-
 // Assign role to user
 app.post('/users/assignRole', async (req, res) => {
   const { userid, role } = req.body;
@@ -2697,6 +2696,53 @@ app.post('/users/assignRole', async (req, res) => {
     if (client) {
       client.release();
     }
+  }
+});
+
+app.get("/auditTrails", async (req, res) => {
+  const { userid } = req.query;
+
+  if (!userid) {
+    return res.status(400).json({ message: "Missing userid parameter" });
+  }
+
+  try {
+    const clusterResult = await pool.query(
+      `SELECT DISTINCT p.clusterid, u.usergroup FROM properties p JOIN users u ON p.userid = u.userid WHERE userid = $1`,
+      [userid]
+    );
+
+    if (clusterResult.rows.length === 0) {
+      return res.status(404).json({ message: "No cluster or usergroup found for this user" });
+    }
+
+    const usergroup = clusterResult.rows[0].usergroup;
+    const clusterids = clusterResult.rows.map((row) => row.clusterid);
+
+    const result = await pool.query(
+      `
+      SELECT 
+        a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid
+      FROM audit_trail a 
+      JOIN users u
+      ON a.userid = u.userid
+      WHERE u.usergroup = $1
+      AND u.clusterid = ANY($2);
+      `,
+      [usergroup, clusterids]
+    );
+
+    if (result.rows.length > 0) {
+      console.log("Audit trails result:", result.rows);
+      res.json({
+        auditTrails: result.rows,
+      });
+    } else {
+      res.status(404).json({ message: "No audit trail found" });
+    }
+  } catch (err) {
+    console.error("Error fetching audit trail data:", err);
+    res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
 
