@@ -1730,6 +1730,18 @@ app.post('/reservation/:userid', async (req, res) => {
 
     const reservationid = reservationResult.rows[0].reservationid;
 
+    // Add log entry to Book_and_Pay_Log table
+    await client.query(
+      `INSERT INTO Book_and_Pay_Log 
+       (logTime, log, userID)
+       VALUES ($1, $2, $3)`,
+      [
+        reservationDateTime,
+        `Reservation created: #${reservationid} for property #${propertyid}`,
+        userid
+      ]
+    );
+
     await client.query('COMMIT');
 
     res.status(201).json({ 
