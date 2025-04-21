@@ -2341,7 +2341,7 @@ app.put('/cancelReservation/:reservationid', async (req, res) => {
 // Update reservation status
 app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
-  const { reservationStatus } = req.body;
+  const { reservationStatus, userid } = req.body;
   let client;
 
   try {
@@ -2350,6 +2350,17 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
     const result = await client.query(
       'UPDATE reservation SET reservationstatus = $1 WHERE reservationid = $2 RETURNING *',
       [reservationStatus, reservationid]
+    );
+
+    await client.query(
+      `INSERT INTO Book_and_Pay_Log 
+       (logTime, log, userID)
+       VALUES ($1, $2, $3)`,
+      [
+        CURRENT_TIMESTAMP,
+        `Admin updated reservation status to ${reservationStatus}`,
+        userid
+      ]
     );
 
     if (result.rowCount === 0) {
