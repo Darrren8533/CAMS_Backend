@@ -2357,11 +2357,13 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
        (logTime, log, userID)
        VALUES ($1, $2, $3)`,
       [
-        CURRENT_TIMESTAMP,
+        new Date(),
         `Admin updated reservation status to ${reservationStatus}`,
         userid
       ]
     );
+
+    await client.query('COMMIT');
 
     if (result.rowCount === 0) {
       return res.status(404).json({ message: 'error' });
