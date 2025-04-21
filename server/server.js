@@ -2373,7 +2373,7 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
        VALUES ($1, $2, $3)`,
       [
         new Date(),
-        `Admin updated reservation status to ${reservationStatus}`,
+        `${userid} updated reservation status to ${reservationStatus}`,
         userid
       ]
     );
