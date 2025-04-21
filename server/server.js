@@ -1767,23 +1767,17 @@ app.post('/reservation/:userid', async (req, res) => {
 
 // Fetch Book and Pay Log
 app.get('/users/booklog', async (req, res) => {
+  let client;
+
   try {
-    const result = await pool.query(`
+    client = await pool.connect();
+    const result = await client.query(`
       SELECT 
-        a.userid, 
-        a.timestamp, 
-        a.action,
-        CASE 
-          WHEN POSITION('propertyid' IN a.action) > 0 THEN
-            CAST(
-              REGEXP_MATCHES(a.action, 'propertyid\\s+(\\d+)', 'g') [1]
-              AS INTEGER
-            )
-          ELSE NULL 
-        END AS propertyid
-      FROM Audit_Trail a
-      WHERE a.action LIKE '%propertyid%'
-      ORDER BY a.timestamp DESC
+          b.userID, 
+          b.logTime AS timestamp, 
+          b.log AS action
+      FROM Book_and_Pay_Log b
+      ORDER BY b.logTime DESC;
     `);
 
     res.json(result.rows);
