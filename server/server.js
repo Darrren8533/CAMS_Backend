@@ -1780,6 +1780,8 @@ app.get('/users/booklog', async (req, res) => {
       ORDER BY b.logtime DESC;
     `);
 
+    console.log(result.rows);
+
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching Book Log:', err);
