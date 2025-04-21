@@ -2410,6 +2410,19 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
       return res.status(404).json({ message: 'Reservation not found' });
     }
 
+    await client.query(
+      `INSERT INTO Book_and_Pay_Log 
+       (logTime, log, userID)
+       VALUES ($1, $2, $3)`,
+      [
+        new Date(),
+        `Removed reservation #${reservationid} for property #${propertyid}`,
+        userid
+      ]
+    );
+
+    await client.query('COMMIT');
+
     res.status(200).json({ message: 'Reservation removed successfully' });
   } catch (err) {
     console.error('Error deleting reservation:', err);
