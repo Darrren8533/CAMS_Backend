@@ -44,7 +44,7 @@ const getDefaultAvatarBase64 = () => {
 const generateRandomSixDigits = () => Math.floor(100000 + Math.random() * 900000);
 
 app.get('/', async(req, res) => {
-  console.log('DATABASE_URL:', process.env.DATABASE_URL);
+  // console.log('DATABASE_URL:', process.env.DATABASE_URL);
   let client;
   try {
     client = await pool.connect();
@@ -1096,8 +1096,8 @@ app.get('/checkStatus', async(req, res) => {
   const { userid } = req.query;
   let client;
 
-  console.log('Received userID parameter:', userid);
-  console.log('Full query parameters:', req.query);
+  // console.log('Received userID parameter:', userid);
+  // console.log('Full query parameters:', req.query);
 
   try {
     client = await pool.connect();
@@ -1109,13 +1109,13 @@ app.get('/checkStatus', async(req, res) => {
     
     const result = await client.query(query);
 
-    console.log('Full result object:', result);
+    // console.log('Full result object:', result);
     
-    console.log('Rows:', result.rows);
+    // console.log('Rows:', result.rows);
     
     if (result.rows.length > 0) {
       const user = result.rows[0];
-      console.log('User information:', user); 
+      // console.log('User information:', user); 
       res.status(200).json({ 
         ustatus: user.ustatus,
         userInfo: user  
@@ -1780,9 +1780,18 @@ app.get('/users/booklog', async (req, res) => {
       ORDER BY b.logtime DESC;
     `);
 
-    console.log(result.rows);
+    // Format timestamps to remove T and milliseconds with Z
+    const formattedRows = result.rows.map(row => {
+      if (row.timestamp) {
+        const date = new Date(row.timestamp);
+        row.timestamp = date.toISOString().replace('T', ' ').split('.')[0];
+      }
+      return row;
+    });
 
-    res.json(result.rows);
+    console.log(formattedRows);
+
+    res.json(formattedRows);
   } catch (err) {
     console.error('Error fetching Book Log:', err);
     res.status(500).json({ message: 'Internal Server Error', details: err.message });
