@@ -1773,11 +1773,11 @@ app.get('/users/booklog', async (req, res) => {
     client = await pool.connect();
     const result = await client.query(`
       SELECT 
-          b.userID, 
-          b.logTime AS timestamp, 
+          b.userid, 
+          b.logtime AS timestamp, 
           b.log AS action
       FROM Book_and_Pay_Log b
-      ORDER BY b.logTime DESC;
+      ORDER BY b.logtime DESC;
     `);
 
     res.json(result.rows);
