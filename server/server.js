@@ -1415,6 +1415,21 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+
+    // Add log record
+    await pool.query(
+      `INSERT INTO Book_and_Pay_Log 
+       (logTime, log, userID)
+       VALUES ($1, $2, $3)`,
+      [
+        new Date(),
+        `Admin suggested new room (${property.suggestpropertyAddress}) for reservation #${reservationid}`,
+        userid
+      ]
+    );
+
+    await pool.query('COMMIT');
+
     res.status(200).json({ message: 'Email Sent Successfully' });
 
   } catch (err) {
