@@ -150,52 +150,74 @@ app.post('/register', async (req, res) => {
 });
 
 //Login
+const failedAttempts = {}; 
+
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   let client;
 
   try {
     client = await pool.connect();
+
+    const result = await client.query(`
+      SELECT userid, usergroup, uactivation, password 
+      FROM users 
+      WHERE (username = $1 OR uemail = $1)
+    `, [username]);
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid username or password', success: false });
+    }
+
+    const user = result.rows[0];
+
+
+    if (user.uactivation === 'Inactive') {
+      return res.status(403).json({ message: 'Your account is locked due to multiple failed attempts.', success: false });
+    }
+
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
     
-  
-    const result = await client.query(
-      `SELECT userid, usergroup, uactivation, password 
-       FROM users 
-       WHERE (username = $1 OR uemail = $1)`,
-      [username]
-    );
+    if (passwordMatch) {
+    
+      delete failedAttempts[username]; // or email
+      await client.query(`
+        UPDATE users SET ustatus = 'login' WHERE username = $1 OR uemail = $1
+      `, [username]);
 
-    if (result.rows.length > 0) {
-      const { userid, usergroup, uactivation, password: hashedPassword } = result.rows[0];
-      
-      
-      const passwordMatch = await bcrypt.compare(password, hashedPassword);
-      
-      if (passwordMatch) {
-        
-        await client.query(
-          `UPDATE users
-           SET ustatus = 'login' 
-           WHERE username = $1 OR uemail = $1`,
-          [username]
-        );
-
-        res.status(200).json({
-          message: 'Login Successful',
-          success: true,
-          userid: userid, 
-          usergroup: usergroup,
-          uactivation: uactivation 
-        });
-      } else {
-        
-        res.status(401).json({ message: 'Invalid username or password', success: false });
-      }
+      return res.status(200).json({
+        message: 'Login Successful',
+        success: true,
+        userid: user.userid,
+        usergroup: user.usergroup,
+        uactivation: user.uactivation
+      });
     } else {
-      res.status(401).json({ message: 'Invalid username or password', success: false });
+
+      const now = Date.now();
+      if (!failedAttempts[username]) {
+        failedAttempts[username] = { count: 1, lastAttemptTime: now };
+      } else {
+        failedAttempts[username].count++;
+        failedAttempts[username].lastAttemptTime = now;
+      }
+
+      if (failedAttempts[username].count >= 5) {
+        
+        await client.query(`
+          UPDATE users SET uactivation = 'Inactive'
+          WHERE username = $1 OR uemail = $1
+        `, [username]);
+
+        delete failedAttempts[username];
+        return res.status(403).json({ message: 'Account locked due to too many failed login attempts.', success: false });
+      }
+
+      return res.status(401).json({ message: 'Invalid username or password', success: false });
     }
   } catch (err) {
-    console.error('Error during login:', err);
+    console.error('Login Error:', err);
     res.status(500).json({ message: 'Server error', success: false });
   } finally {
     if (client) {
@@ -203,6 +225,7 @@ app.post('/login', async (req, res) => {
     }
   }
 });
+
 
 // Google login
 app.post("/google-login", async (req, res) => {
