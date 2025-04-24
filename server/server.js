@@ -43,6 +43,8 @@ const getDefaultAvatarBase64 = () => {
 
 const generateRandomSixDigits = () => Math.floor(100000 + Math.random() * 900000);
 
+const failedAttempts = {}; 
+
 app.get('/', async(req, res) => {
   // console.log('DATABASE_URL:', process.env.DATABASE_URL);
   let client;
@@ -150,8 +152,6 @@ app.post('/register', async (req, res) => {
 });
 
 //Login
-const failedAttempts = {}; 
-
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   let client;
