@@ -2808,7 +2808,7 @@ app.get("/auditTrails", async (req, res) => {
 
   try {
     const clusterResult = await pool.query(
-      `SELECT DISTINCT p.clusterid, u.usergroup FROM properties p JOIN users u ON p.userid = u.userid WHERE userid = $1`,
+      `SELECT DISTINCT clusterid, usergroup FROM users WHERE userid = $1`,
       [userid]
     );
 
@@ -2826,10 +2826,9 @@ app.get("/auditTrails", async (req, res) => {
       FROM audit_trail a 
       JOIN users u
       ON a.userid = u.userid
-      WHERE u.usergroup = $1
-      AND u.clusterid = ANY($2);
+      WHERE u.clusterid = ANY($1);
       `,
-      [usergroup, clusterids]
+      [clusterids]
     );
 
     if (result.rows.length > 0) {
