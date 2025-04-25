@@ -150,7 +150,7 @@ app.post('/register', async (req, res) => {
         )
         VALUES ($1, $2, $3, $4, $5, $6)`,
         [
-          userid, timestamp, "Users", "POST", `User ${userid} Register An Account`, userid
+          userid, timestamp, "Users", "POST", `Register An Account`, userid
         ]
       );
       console.log("Audit trail inserted");
