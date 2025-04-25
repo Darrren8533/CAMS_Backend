@@ -141,17 +141,22 @@ app.post('/register', async (req, res) => {
     
     const userQueryResult = await client.query(insertUserQuery);
 
-    const userid = userQueryResult.row[0].userid;
+    const userid = userQueryResult.rows[0].userid;
 
-    const registerAuditTrail = await client.query(
-      `INSERT INTO audit_trail (
-          entityid, timestamp, entitytype, actiontype, action, userid
-      )
-      VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        userid, timestamp, "Users", "POST", `User ${userid} Register An Account`, userid
-      ]
-    );
+    try {
+      const registerAuditTrail = await client.query(
+        `INSERT INTO audit_trail (
+            entityid, timestamp, entitytype, actiontype, action, userid
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          userid, timestamp, "Users", "POST", `User ${userid} Register An Account`, userid
+        ]
+      );
+      console.log("Audit trail inserted");
+    } catch (auditErr) {
+      console.error("Failed to insert audit trail:", auditErr.message);
+    }
 
     res.status(201).json({ message: 'User registered successfully', success: true });
   } catch (err) {
