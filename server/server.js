@@ -119,9 +119,9 @@ app.post('/register', async (req, res) => {
       text: `
         INSERT INTO users (
           username, password, uemail, utitle, usergroup, ustatus, uactivation, uimage,
-          ufirstname, ulastname
+          ufirstname, ulastname, clusterid
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       `,
       values: [
         username,
@@ -133,7 +133,8 @@ app.post('/register', async (req, res) => {
         'Active',
         defaultAvatarBase64,
         firstName,
-        lastName  
+        lastName, 
+        '1'
       ]
     };
     
