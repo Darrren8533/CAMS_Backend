@@ -122,6 +122,7 @@ app.post('/register', async (req, res) => {
           ufirstname, ulastname, clusterid
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING userid
       `,
       values: [
         username,
@@ -138,7 +139,19 @@ app.post('/register', async (req, res) => {
       ]
     };
     
-    await client.query(insertUserQuery);
+    const userQueryResult = await client.query(insertUserQuery);
+
+    const userid = userQueryResult.row[0].userid;
+
+    const registerAuditTrail = await client.query(
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        userid, timestamp, "Users", "POST", `User ${userid} Register An Account`, userid
+      ]
+    );
 
     res.status(201).json({ message: 'User registered successfully', success: true });
   } catch (err) {
