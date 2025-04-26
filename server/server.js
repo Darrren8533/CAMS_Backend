@@ -198,14 +198,6 @@ app.post('/login', async (req, res) => {
         UPDATE users SET ustatus = 'login' WHERE username = $1 OR uemail = $1
       `, [username]);
 
-      return res.status(200).json({
-        message: 'Login Successful',
-        success: true,
-        userid: user.userid,
-        usergroup: user.usergroup,
-        uactivation: user.uactivation
-      });
-
       const userid = user.userid;
 
       const loginAuditTrail = await client.query (
@@ -217,6 +209,14 @@ app.post('/login', async (req, res) => {
             userid, timestamp, "Users", "POST", `Login`, userid
           ]
       );
+
+      return res.status(200).json({
+        message: 'Login Successful',
+        success: true,
+        userid: user.userid,
+        usergroup: user.usergroup,
+        uactivation: user.uactivation
+      });
     } else {
       const now = Date.now();
       
