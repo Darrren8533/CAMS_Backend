@@ -510,10 +510,10 @@ app.post('/users/createModerator', async (req, res) => {
     const defaultAvatar = await getDefaultAvatarBase64();
 
     const createModeratorResult = await client.query(
-      `INSERT INTO users (ufirstname, ulastname, username, password, uemail, uphoneno, ucountry, uzipcode, utitle, usergroup, ustatus, uactivation, uimage)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Mr.', 'Moderator', 'registered', 'Active', $9)
+      `INSERT INTO users (ufirstname, ulastname, username, password, uemail, uphoneno, ucountry, uzipcode, utitle, usergroup, ustatus, uactivation, uimage, clusterid, timestamp)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Mr.', 'Moderator', 'registered', 'Active', $9, '1', $10)
        RETURNING userid`,
-      [firstName, lastName, username, password, email, phoneNo, country, zipCode, defaultAvatar]
+      [firstName, lastName, username, password, email, phoneNo, country, zipCode, defaultAvatar, timestamp]
     );
 
     const entityid = createModeratorResult.rows[0].userid;
@@ -580,7 +580,6 @@ app.put('/users/updateUser/:userid', async (req, res) => {
   }
 });
 
-
 // Remove users by user ID
 app.delete('/users/removeUser/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -615,7 +614,6 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
     }
   }
 });
-
 
 // Suspend users by user ID
 app.put('/users/suspenduser/:userid', async (req, res) => {
@@ -1145,7 +1143,6 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
     }
   }
 });
-
 
 app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
     const { propertyid } = req.params;
