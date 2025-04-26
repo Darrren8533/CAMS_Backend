@@ -2840,7 +2840,7 @@ app.get("/auditTrails", async (req, res) => {
     const result = await pool.query(
       `
       SELECT 
-        a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid
+        a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid, a.username
       FROM audit_trail a 
       JOIN users u
       ON a.userid = u.userid
