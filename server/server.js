@@ -290,8 +290,6 @@ app.post("/google-login", async (req, res) => {
 
         await client.query("UPDATE users SET ustatus = 'login' WHERE uemail = $1", [email]);
 
-        const userid = result.rows[0].userid;
-
         const googleLoginAuditTrail = await client.query (
           `INSERT INTO audit_trail (
               entityid, timestamp, entitytype, actiontype, action, userid
@@ -324,9 +322,9 @@ app.post("/google-login", async (req, res) => {
 
         const newuserid = insertResult.rows[0].userid;
 
-          return res.status(201).json({
-              success: true,
-              message: "Google Login Successful, new user created",
+        return res.status(201).json({
+          success: true,
+          message: "Google Login Successful, new user created",
           userid: newuserid,
           usergroup: "Customer",
           uactivation: "Active",
