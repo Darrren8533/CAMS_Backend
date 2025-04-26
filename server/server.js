@@ -141,7 +141,6 @@ app.post('/register', async (req, res) => {
     const userQueryResult = await client.query(insertUserQuery);
 
     const userid = userQueryResult.rows[0].userid;
-    const username = userQueryResult.rows[0].username;
 
     const registerAuditTrail = await client.query (
         `INSERT INTO audit_trail (
@@ -199,7 +198,6 @@ app.post('/login', async (req, res) => {
       `, [username]);
 
       const userid = user.userid;
-      const username = user.username;
 
       const loginAuditTrail = await client.query (
           `INSERT INTO audit_trail (
