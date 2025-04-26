@@ -110,7 +110,6 @@ app.post('/register', async (req, res) => {
     if (checkResult.rows.length > 0) {
       return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
-
     
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const defaultAvatarBase64 = await getDefaultAvatarBase64();
@@ -142,14 +141,15 @@ app.post('/register', async (req, res) => {
     const userQueryResult = await client.query(insertUserQuery);
 
     const userid = userQueryResult.rows[0].userid;
+    const username = userQueryResult.rows[0].username;
 
     const registerAuditTrail = await client.query (
         `INSERT INTO audit_trail (
-            entityid, timestamp, entitytype, actiontype, action, userid
+            entityid, timestamp, entitytype, actiontype, action, userid, username
         )
         VALUES ($1, $2, $3, $4, $5, $6)`,
         [
-          userid, timestamp, "Users", "POST", "Register An Account", userid
+          userid, timestamp, "Users", "POST", "Register An Account", userid, username
         ]
     );
 
@@ -199,14 +199,15 @@ app.post('/login', async (req, res) => {
       `, [username]);
 
       const userid = user.userid;
+      const username = user.username;
 
       const loginAuditTrail = await client.query (
           `INSERT INTO audit_trail (
-              entityid, timestamp, entitytype, actiontype, action, userid
+              entityid, timestamp, entitytype, actiontype, action, userid, username
           )
           VALUES ($1, $2, $3, $4, $5, $6)`,
           [
-            userid, timestamp, "Users", "POST", "Login", userid
+            userid, timestamp, "Users", "POST", "Login", userid, username
           ]
       );
 
@@ -292,11 +293,11 @@ app.post("/google-login", async (req, res) => {
 
         const googleLoginAuditTrail = await client.query (
           `INSERT INTO audit_trail (
-              entityid, timestamp, entitytype, actiontype, action, userid
+              entityid, timestamp, entitytype, actiontype, action, userid, username
           )
           VALUES ($1, $2, $3, $4, $5, $6)`,
           [
-            userid, timestamp, "Users", "POST", "Google Login", userid
+            userid, timestamp, "Users", "POST", "Google Login", userid, existingUsername
           ]
         );
         
