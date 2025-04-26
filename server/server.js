@@ -143,8 +143,7 @@ app.post('/register', async (req, res) => {
 
     const userid = userQueryResult.rows[0].userid;
 
-    try {
-      const registerAuditTrail = await client.query(
+    const registerAuditTrail = await client.query (
         `INSERT INTO audit_trail (
             entityid, timestamp, entitytype, actiontype, action, userid
         )
@@ -152,11 +151,7 @@ app.post('/register', async (req, res) => {
         [
           userid, timestamp, "Users", "POST", `Register An Account`, userid
         ]
-      );
-      console.log("Audit trail inserted");
-    } catch (auditErr) {
-      console.error("Failed to insert audit trail:", auditErr.message);
-    }
+    );
 
     res.status(201).json({ message: 'User registered successfully', success: true });
   } catch (err) {
@@ -174,6 +169,7 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   let client;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
   try {
     client = await pool.connect();
@@ -190,16 +186,13 @@ app.post('/login', async (req, res) => {
 
     const user = result.rows[0];
 
-
     if (user.uactivation === 'Inactive') {
       return res.status(403).json({ message: 'Your account is locked due to multiple failed attempts.', success: false });
     }
 
-
     const passwordMatch = await bcrypt.compare(password, user.password);
     
     if (passwordMatch) {
-    
       delete failedAttempts[username]; // or email
       await client.query(`
         UPDATE users SET ustatus = 'login' WHERE username = $1 OR uemail = $1
@@ -213,8 +206,8 @@ app.post('/login', async (req, res) => {
         uactivation: user.uactivation
       });
     } else {
-
       const now = Date.now();
+      
       if (!failedAttempts[username]) {
         failedAttempts[username] = { count: 1, lastAttemptTime: now };
       } else {
@@ -230,11 +223,24 @@ app.post('/login', async (req, res) => {
         `, [username]);
 
         delete failedAttempts[username];
+        
         return res.status(403).json({ message: 'Account locked due to too many failed login attempts.', success: false });
       }
-
       return res.status(401).json({ message: 'Invalid username or password', success: false });
     }
+
+    const userid = user.userid;
+
+    const loginAuditTrail = await client.query (
+        `INSERT INTO audit_trail (
+            entityid, timestamp, entitytype, actiontype, action, userid
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          userid, timestamp, "Users", "POST", `Login`, userid
+        ]
+    );
+    
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ message: 'Server error', success: false });
@@ -244,7 +250,6 @@ app.post('/login', async (req, res) => {
     }
   }
 });
-
 
 // Google login
 app.post("/google-login", async (req, res) => {
