@@ -488,11 +488,11 @@ app.get('/users/administrators', async (req, res) => {
   }
 });
 
-
 // Create moderators
 app.post('/users/createModerator', async (req, res) => {
-  const { firstName, lastName, username, password, email, phoneNo, country, zipCode } = req.body;
+  const { firstName, lastName, username, password, email, phoneNo, country, zipCode, userid, creatorUsername } = req.body;
   let client;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
   try {
     client = await pool.connect();
@@ -509,14 +509,26 @@ app.post('/users/createModerator', async (req, res) => {
 
     const defaultAvatar = await getDefaultAvatarBase64();
 
-    await client.query(
+    const createModeratorResult = await client.query(
       `INSERT INTO users (ufirstname, ulastname, username, password, uemail, uphoneno, ucountry, uzipcode, utitle, usergroup, ustatus, uactivation, uimage)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Mr.', 'Moderator', 'registered', 'Active', $9)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Mr.', 'Moderator', 'registered', 'Active', $9)
+       RETURNING userid`,
       [firstName, lastName, username, password, email, phoneNo, country, zipCode, defaultAvatar]
     );
 
-    res.status(201).json({ message: "User registered successfully", success: true });
+    const entityid = createModeratorResult.rows[0].userid;
 
+    const createModeratorAuditTrail = await client.query (
+        `INSERT INTO audit_trail (
+            entityid, timestamp, entitytype, actiontype, action, userid, username
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          entityid, timestamp, "Users", "POST", "Create New Moderator", userid, creatorUsername
+        ]
+    );
+    
+    res.status(201).json({ message: "User registered successfully", success: true });
   } catch (err) {
     console.error("Error during registration:", err);
     res.status(500).json({ message: "Server error", success: false });
