@@ -141,7 +141,6 @@ app.post('/register', async (req, res) => {
     const userQueryResult = await client.query(insertUserQuery);
 
     const userid = userQueryResult.rows[0].userid;
-    const username = userQueryResult.rows[0].username;
 
     const registerAuditTrail = await client.query (
         `INSERT INTO audit_trail (
@@ -199,7 +198,6 @@ app.post('/login', async (req, res) => {
       `, [username]);
 
       const userid = user.userid;
-      const username = user.username;
 
       const loginAuditTrail = await client.query (
           `INSERT INTO audit_trail (
@@ -344,6 +342,7 @@ app.post("/google-login", async (req, res) => {
 app.post('/logout', async (req, res) => {
   const { userid } = req.body;
   let client;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
   try {
     client = await pool.connect();
@@ -354,6 +353,23 @@ app.post('/logout', async (req, res) => {
     };
     
     await client.query(query);
+
+    const usernameQuery = await client.query (
+      `SELECT username FROM users WHERE userid = $1`,
+      [userid]
+    );
+
+    const username = usernameQuery.rows[0].username;
+
+    const logoutAuditTrail = await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        userid, timestamp, "Users", "POST", "Logout", userid, username
+      ]
+    );
 
     res.status(200).json({ message: 'Logout Successful', success: true });
   } catch (err) {
@@ -2844,7 +2860,7 @@ app.get("/auditTrails", async (req, res) => {
     const result = await pool.query(
       `
       SELECT 
-        a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid
+        a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid, a.username
       FROM audit_trail a 
       JOIN users u
       ON a.userid = u.userid
