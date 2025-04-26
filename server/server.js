@@ -2669,6 +2669,8 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
   try {
     client = await pool.connect();
 
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
     // Update user profile
     const query = `
       UPDATE users 
@@ -2688,7 +2690,7 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
       RETURNING userid;
     `;
 
-    const values = [username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userid];
+    const values = [username, hashedPassword, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userid];
     const result = await client.query(query, values);
 
     if (result.rows.length === 0) {
