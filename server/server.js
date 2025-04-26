@@ -679,8 +679,10 @@ app.put('/users/suspenduser/:userid', async (req, res) => {
 });
 
 // Activate users by userid
-app.put('/users/activateuser/:userid', async (req, res) => {
+app.put('/users/activateUser/:userid', async (req, res) => {
   const { userid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
   let client;
 
   // Validate userid
@@ -705,6 +707,13 @@ app.put('/users/activateuser/:userid', async (req, res) => {
     await client.query(
       `UPDATE users SET uactivation = 'Active' WHERE userid = $1`,
       [userid]
+    );
+
+    await client.query(
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userid, timestamp, "Users", "PUT", "Activate User", creatorid, creatorUsername]
     );
 
     res.status(200).json({ message: 'User activated successfully' });
