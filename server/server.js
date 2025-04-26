@@ -147,7 +147,7 @@ app.post('/register', async (req, res) => {
         `INSERT INTO audit_trail (
             entityid, timestamp, entitytype, actiontype, action, userid, username
         )
-        VALUES ($1, $2, $3, $4, $5, $6)`,
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           userid, timestamp, "Users", "POST", "Register An Account", userid, username
         ]
@@ -205,7 +205,7 @@ app.post('/login', async (req, res) => {
           `INSERT INTO audit_trail (
               entityid, timestamp, entitytype, actiontype, action, userid, username
           )
-          VALUES ($1, $2, $3, $4, $5, $6)`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             userid, timestamp, "Users", "POST", "Login", userid, username
           ]
@@ -295,7 +295,7 @@ app.post("/google-login", async (req, res) => {
           `INSERT INTO audit_trail (
               entityid, timestamp, entitytype, actiontype, action, userid, username
           )
-          VALUES ($1, $2, $3, $4, $5, $6)`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             userid, timestamp, "Users", "POST", "Google Login", userid, existingUsername
           ]
