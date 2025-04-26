@@ -149,7 +149,7 @@ app.post('/register', async (req, res) => {
         )
         VALUES ($1, $2, $3, $4, $5, $6)`,
         [
-          userid, timestamp, "Users", "POST", `Register An Account`, userid
+          userid, timestamp, "Users", "POST", "Register An Account", userid
         ]
     );
 
@@ -206,7 +206,7 @@ app.post('/login', async (req, res) => {
           )
           VALUES ($1, $2, $3, $4, $5, $6)`,
           [
-            userid, timestamp, "Users", "POST", `Login`, userid
+            userid, timestamp, "Users", "POST", "Login", userid
           ]
       );
 
@@ -253,12 +253,14 @@ app.post('/login', async (req, res) => {
 // Google login
 app.post("/google-login", async (req, res) => {
   const { token } = req.body;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
   try {
       // Get user info from Google
       const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
       headers: { Authorization: `Bearer ${token}` },
       });
+    
       const googleUser = await response.json();
 
       if (!googleUser.email) {
@@ -266,9 +268,10 @@ app.post("/google-login", async (req, res) => {
       }
 
       const { email, given_name, family_name, picture } = googleUser;
+    
       console.log("Google User Data:", googleUser); 
 
-    const client = await pool.connect();
+      const client = await pool.connect();
 
     try {
       // Check if user exists
@@ -278,21 +281,35 @@ app.post("/google-login", async (req, res) => {
       );
 
       let username;
+      
       if (result.rows.length > 0) {
           // Existing user, update login status
         const { userid, usergroup, uactivation, username: existingUsername } = result.rows[0];
-          username = existingUsername;
+        
+        username = existingUsername;
 
         await client.query("UPDATE users SET ustatus = 'login' WHERE uemail = $1", [email]);
 
-          return res.status(200).json({
-              success: true,
-              message: "Google Login Successful",
+        const userid = result.rows[0].userid;
+
+        const googleLoginAuditTrail = await client.query (
+          `INSERT INTO audit_trail (
+              entityid, timestamp, entitytype, actiontype, action, userid
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            userid, timestamp, "Users", "POST", "Google Login", userid
+          ]
+        );
+        
+        return res.status(200).json({
+          success: true,
+          message: "Google Login Successful",
           userid: userid,
           usergroup: usergroup,
           uactivation: uactivation,
           username,
-          });
+        });
       } else {
           const randomSixDigits = generateRandomSixDigits();
         username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
