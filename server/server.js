@@ -490,7 +490,7 @@ app.get('/users/administrators', async (req, res) => {
 
 // Create moderators
 app.post('/users/createModerator', async (req, res) => {
-  const { firstName, lastName, username, password, email, phoneNo, country, zipCode, userid, creatorUsername } = req.body;
+  const { firstName, lastName, username, password, email, phoneNo, country, zipCode, creatorid, creatorUsername } = req.body;
   let client;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
@@ -524,7 +524,7 @@ app.post('/users/createModerator', async (req, res) => {
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
-          entityid, timestamp, "Users", "POST", "Create New Moderator", userid, creatorUsername
+          entityid, timestamp, "Users", "POST", "Create New Moderator", creatorid, creatorUsername
         ]
     );
     
@@ -542,7 +542,7 @@ app.post('/users/createModerator', async (req, res) => {
 // Update users by user ID
 app.put('/users/updateUser/:userid', async (req, res) => {
   const { userid } = req.params;
-  const { firstName, lastName, username, email, phoneNo, country, zipCode } = req.body;
+  const { firstName, lastName, username, email, phoneNo, country, zipCode, creatorid, creatorUsername } = req.body;
 
   try {
       const query = `
@@ -561,18 +561,16 @@ app.put('/users/updateUser/:userid', async (req, res) => {
 
       await pool.query(query, values);
 
-          console.log(`
-      UPDATE users
-      SET ufirstname = '${firstName}', 
-          ulastname = '${lastName}', 
-        username = '${username}', 
-          uemail = '${email}',
-          uphoneno = '${phoneNo}',
-          ucountry = '${country}',
-          uzipcode = '${zipCode}'
-      WHERE userid = '${userid}'
-`);
-
+      const updateUserAuditTrail = await client.query (
+          `INSERT INTO audit_trail (
+              entityid, timestamp, entitytype, actiontype, action, userid, username
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            entityid, timestamp, "Users", "PUT", "Update User Info", creatorid, creatorUsername
+          ]
+      );
+  
       res.status(200).json({ message: 'User updated successfully' });
   } catch (err) {
       console.error('Error updating user:', err);
