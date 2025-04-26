@@ -342,6 +342,7 @@ app.post("/google-login", async (req, res) => {
 app.post('/logout', async (req, res) => {
   const { userid } = req.body;
   let client;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
   try {
     client = await pool.connect();
@@ -352,6 +353,23 @@ app.post('/logout', async (req, res) => {
     };
     
     await client.query(query);
+
+    const usernameQuery = await client.query (
+      `SELECT username FROM users WHERE userid = $1`,
+      [userid]
+    );
+
+    const username = usernameQuery.rows[0].username;
+
+    const logoutAuditTrail = await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        userid, timestamp, "Users", "POST", "Logout", userid, username
+      ]
+    );
 
     res.status(200).json({ message: 'Logout Successful', success: true });
   } catch (err) {
