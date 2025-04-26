@@ -1229,7 +1229,7 @@ app.post("/contact_us", async (req, res) => {
   });
 
   const mailOptions = {
-      from: email,
+      from: process.env.EMAIL_USER,
       to: process.env.EMAIL_USER,
     subject: `Message from ${name}`,
     html: `
