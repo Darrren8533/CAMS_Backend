@@ -588,6 +588,8 @@ app.put('/users/updateUser/:userid', async (req, res) => {
 // Remove users by user ID
 app.delete('/users/removeUser/:userid', async (req, res) => {
   const { userid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
   let client;
 
   try {
@@ -607,6 +609,13 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
     await client.query(
       'DELETE FROM users WHERE userid = $1',
       [userid]
+    );
+
+    await client.query(
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userid, timestamp, "Users", "DELETE", "Delete User", creatorid, creatorUsername]
     );
 
     res.status(200).json({ message: 'User removed successfully' });
