@@ -205,6 +205,18 @@ app.post('/login', async (req, res) => {
         usergroup: user.usergroup,
         uactivation: user.uactivation
       });
+
+      const userid = user.userid;
+
+      const loginAuditTrail = await client.query (
+          `INSERT INTO audit_trail (
+              entityid, timestamp, entitytype, actiontype, action, userid
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            userid, timestamp, "Users", "POST", `Login`, userid
+          ]
+      );
     } else {
       const now = Date.now();
       
@@ -228,19 +240,6 @@ app.post('/login', async (req, res) => {
       }
       return res.status(401).json({ message: 'Invalid username or password', success: false });
     }
-
-    const userid = user.userid;
-
-    const loginAuditTrail = await client.query (
-        `INSERT INTO audit_trail (
-            entityid, timestamp, entitytype, actiontype, action, userid
-        )
-        VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          userid, timestamp, "Users", "POST", `Login`, userid
-        ]
-    );
-    
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ message: 'Server error', success: false });
