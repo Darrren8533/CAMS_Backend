@@ -740,9 +740,13 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       nearbyLocation,
       facilities
   } = req.body;
+
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+  
   if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'Please upload at least 5 property images.' });
   }
+  
   let client;
   try {
       client = await pool.connect();
@@ -752,16 +756,14 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           'SELECT userid, usergroup FROM users WHERE username = $1',
           [username]
       );
+    
       if (userResult.rows.length === 0) {
           return res.status(404).json({ error: 'User not found' });
       }
+    
       const { userid, usergroup } = userResult.rows[0];
       // Determine propertyStatus based on userGroup
       const propertyStatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
-      
-      // REPLACE THIS SECTION:
-      // const base64Images = req.files.map(file => file.buffer.toString('base64'));
-      // const concatenatedImages = base64Images.join(',');
       
       // WITH THIS RESIZING CODE:
       const base64Images = await Promise.all(req.files.map(async (file) => {
@@ -790,7 +792,6 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       
       const concatenatedImages = base64Images.join(',');
       
-      // Continue with your existing code
       // Insert rate
       const rateResult = await client.query(
           `INSERT INTO rate (rateamount, ratetype, period)
@@ -798,6 +799,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
            RETURNING rateid`,
           [propertyPrice, "DefaultType", "DefaultPeriod"]
       );
+    
       const rateID = rateResult.rows[0].rateid;
       let clusterID;
       const existingCluster = await client.query(
@@ -816,11 +818,13 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           );
           clusterID = clusterResult.rows[0].clusterid;
       }
+    
       let categoryID;
       const existingCategory = await client.query(
           'SELECT categoryid FROM categories WHERE categoryname = $1',
           [categoryName]
       );
+    
       if (existingCategory.rows.length > 0) {
           categoryID = existingCategory.rows[0].categoryid;
       } else {
@@ -854,6 +858,13 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       const propertyid = propertyListingResult.rows[0].propertyid;
       
       await client.query('COMMIT');
+
+      await client.query(
+        `INSERT INTO audit_trail (
+            entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [propertyid, timestamp, "Properties", "POST", "Create New Property", userid, username]
+      );
 
       res.status(201).json({ message: 'Property created successfully', propertyid });
   } catch (err) {
