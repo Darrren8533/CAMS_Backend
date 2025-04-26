@@ -632,6 +632,8 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
 // Suspend users by user ID
 app.put('/users/suspenduser/:userid', async (req, res) => {
   const { userid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
   let client;
 
   // Validate userid
@@ -656,6 +658,13 @@ app.put('/users/suspenduser/:userid', async (req, res) => {
     await client.query(
       `UPDATE users SET uactivation = 'Inactive' WHERE userid = $1`,
       [userid]
+    );
+
+    await client.query(
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userid, timestamp, "Users", "PUT", "Suspend User", creatorid, creatorUsername]
     );
 
     res.status(200).json({ message: 'User suspended successfully' });
