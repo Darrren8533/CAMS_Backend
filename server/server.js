@@ -543,38 +543,45 @@ app.post('/users/createModerator', async (req, res) => {
 app.put('/users/updateUser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { firstName, lastName, username, email, phoneNo, country, zipCode, creatorid, creatorUsername } = req.body;
-
-  try {
-      const query = `
-          UPDATE users
-          SET ufirstname = $1, 
-              ulastname = $2, 
-              username = $3, 
-              uemail = $4,
-              uphoneno = $5,
-              ucountry = $6,
-              uzipcode = $7
-          WHERE userid = $8
-      `;
-
-      const values = [firstName, lastName, username, email, phoneNo, country, zipCode, userid];
-
-      await pool.query(query, values);
-
-      const updateUserAuditTrail = await client.query (
-          `INSERT INTO audit_trail (
-              entityid, timestamp, entitytype, actiontype, action, userid, username
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            entityid, timestamp, "Users", "PUT", "Update User Info", creatorid, creatorUsername
-          ]
-      );
   
-      res.status(200).json({ message: 'User updated successfully' });
+  let client;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+  
+  try {
+    client = await pool.connect();
+
+    const updateQuery = `
+      UPDATE users
+      SET ufirstname = $1, 
+          ulastname = $2, 
+          username = $3, 
+          uemail = $4,
+          uphoneno = $5,
+          ucountry = $6,
+          uzipcode = $7
+      WHERE userid = $8
+    `;
+
+    const updateValues = [firstName, lastName, username, email, phoneNo, country, zipCode, userid];
+
+    await client.query(updateQuery, updateValues);
+
+    await client.query(
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userid, timestamp, "Users", "PUT", "Update User Info", creatorid, creatorUsername]
+    );
+
+    res.status(200).json({ message: 'User updated successfully' });
+
   } catch (err) {
-      console.error('Error updating user:', err);
-      res.status(500).json({ error: 'Internal Server Error', details: err.message });
+    console.error('Error updating user:', err);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
