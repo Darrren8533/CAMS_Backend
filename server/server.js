@@ -1210,6 +1210,8 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
 
 app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
     const { propertyid } = req.params;
+    const { creatorid, creatorUsername } = req.query;
+    const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
     let client;
   
     try {
@@ -1230,6 +1232,13 @@ app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
         'DELETE FROM properties WHERE propertyid = $1',
         [propertyid]
       );
+
+      await client.query (
+        `INSERT INTO audit_trail (
+            entityid, timestamp, entitytype, actiontype, action, userid, username
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         [propertyid, timestamp, "Properties", "DELETE", "Delete Property", creatorid, creatorUsername]
+      );
   
       res.status(200).json({ message: 'Property deleted successfully', success: true });
     } catch (err) {
@@ -1240,7 +1249,7 @@ app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
         client.release();
       }
     }
-  });
+});
 
 // Check user status by userID
 app.get('/checkStatus', async(req, res) => {
