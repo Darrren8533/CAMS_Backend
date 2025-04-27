@@ -1420,6 +1420,8 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
 // Send Booking Request Accepted Message To Customer
 app.post('/accept_booking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
@@ -1448,7 +1450,6 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
     }
 
     const data = result.rows[0];
-    console.log('Email data:', data);
 
     const {
       rclastname: customerLastName,
@@ -1459,9 +1460,6 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
       reservationblocktime: paymentDueDate,
       propertyaddress: reservationProperty,
     } = data;
-
-    // More detailed logging
-    console.log('Preparing to send email to:', customerEmail);
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -1484,7 +1482,14 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully.');
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reservationid, timestamp, "Reservation", "POST", "Accept Booking", creatorid, creatorUsername]
+    );
+    
     res.status(200).json({ message: 'Email sent successfully' });
   } catch (err) {
     console.error('Error sending email:', err);
