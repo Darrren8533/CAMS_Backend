@@ -1154,7 +1154,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
         [propertyid, timestamp, "Properties", "PUT", "Update Property Info", creatorid, creatorUsername]
       );
 
-        res.status(200).json({ message: 'Property updated successfully' });
+      res.status(200).json({ message: 'Property updated successfully' });
     } catch (err) {
         console.error('Error updating property:', err);
         res.status(500).json({ error: 'Internal Server Error', details: err.message });
@@ -1168,15 +1168,19 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 // Update Property Status API
 app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
-  const { propertyStatus } = req.body; 
+  const { propertyStatus } = req.body;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
 
   if (!propertyStatus) {
     return res.status(400).json({ message: "Property status is required" });
   }
 
   let client;
+  
   try {
-    client = await pool.connect(); 
+    client = await pool.connect();
+    
     const result = await client.query(
       'UPDATE properties SET propertystatus = $1 WHERE propertyid = $2 RETURNING *',
       [propertyStatus, propertyid] 
@@ -1185,6 +1189,13 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Property not found" });
     }
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       [propertyid, timestamp, "Properties", "PATCH", "Update Property Status", creatorid, creatorUsername]
+    );
 
     res.status(200).json({ message: "Property status updated successfully", property: result.rows[0] });
   } catch (error) {
