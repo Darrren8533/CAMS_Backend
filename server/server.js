@@ -1256,9 +1256,6 @@ app.get('/checkStatus', async(req, res) => {
   const { userid } = req.query;
   let client;
 
-  // console.log('Received userID parameter:', userid);
-  // console.log('Full query parameters:', req.query);
-
   try {
     client = await pool.connect();
     
@@ -1268,14 +1265,10 @@ app.get('/checkStatus', async(req, res) => {
     };
     
     const result = await client.query(query);
-
-    // console.log('Full result object:', result);
-    
-    // console.log('Rows:', result.rows);
     
     if (result.rows.length > 0) {
       const user = result.rows[0];
-      // console.log('User information:', user); 
+      
       res.status(200).json({ 
         ustatus: user.ustatus,
         userInfo: user  
@@ -1296,34 +1289,34 @@ app.get('/checkStatus', async(req, res) => {
 
 // Send contact us email
 app.post("/contact_us", async (req, res) => {
-  const { name, email, message } = req.body;
-  let client;
-
-  try {
-    client = await pool.connect(); 
-
-  const transporter = nodemailer.createTransport({
-      service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-  });
-
-  const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-    subject: `Message from ${name}`,
-    html: `
-    <h1>New Message from ${name}</h1>
-    <p><strong>Message:</strong></p>
-    <p>${message}</p>
-    <p><strong>Email:</strong> ${email}</p>`,
-    replyTo: email, 
-  };
-
-    await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: "Email sent successfully" });
+    const { name, email, message } = req.body;
+    let client;
+  
+    try {
+      client = await pool.connect(); 
+  
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+    
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: process.env.EMAIL_USER,
+        subject: `Message from ${name}`,
+        html: `
+        <h1>New Message from ${name}</h1>
+        <p><strong>Message:</strong></p>
+        <p>${message}</p>
+        <p><strong>Email:</strong> ${email}</p>`,
+        replyTo: email, 
+      };
+  
+      await transporter.sendMail(mailOptions);
+      res.status(200).json({ message: "Email sent successfully" });
   } catch (error) {
     console.error("Error sending email:", error);
     res.status(500).json({ message: "Failed to send email", error: error.message });
@@ -1337,10 +1330,13 @@ app.post("/contact_us", async (req, res) => {
 // Send Booking Request Message To Administrator Or Moderator
 app.post('/requestBooking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
   let client;
 
   try {
     client = await pool.connect();
+    
     const result = await client.query(
       `SELECT 
         rc.rclastname, 
@@ -1402,6 +1398,14 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reservationid, timestamp, "Reservation", "POST", "Request Booking", creatorid, creatorUsername]
+    );
+    
     res.status(200).json({ message: 'Email Sent Successfully' })
   } catch (err) {
     console.error('Error sending email: ', err);
