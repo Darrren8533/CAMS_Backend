@@ -1048,6 +1048,8 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
         propertyBedType, propertyGuestPaxNo, clusterName, categoryName, facilities,
         username 
     } = req.body;
+    const { creatorid, creatorUsername } = req.query;
+    const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
 
     const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
 
@@ -1094,6 +1096,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 
         // Determine the new status
         let newStatus = propertyResult.rows[0].propertystatus;
+      
         if (usergroup === "Moderator") {
             newStatus = "Pending";
         }
@@ -1143,6 +1146,13 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
              WHERE categoryid = $2`,
             [categoryName, propertyResult.rows[0].categoryid]
         );
+
+      await client.query(
+        `INSERT INTO audit_trail (
+            entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [propertyid, timestamp, "Properties", "PUT", "Update Property Info", creatorid, creatorUsername]
+      );
 
         res.status(200).json({ message: 'Property updated successfully' });
     } catch (err) {
