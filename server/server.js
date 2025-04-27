@@ -1425,7 +1425,6 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
   let client;
 
   try {
-    console.log('Reservation ID received:', reservationid);
     client = await pool.connect();
 
     const result = await client.query(
@@ -1504,18 +1503,22 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
 // Send New Room Suggestion To Customer
 app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
   const { propertyid, reservationid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
   try {
     // Fetch property details for suggestion
-    const propertyResult = await pool.query(
-      `SELECT propertyaddress AS "suggestpropertyAddress",
+    client = await pool.connect();
+    
+    const propertyResult = await client.query(
+      `SELECT p.propertyaddress AS "suggestPropertyAddress",
               r.rateamount AS "suggestPropertyPrice",
-              nearbylocation AS "suggestPropertyLocation",
-              propertybedtype AS "suggestPropertyBedType",
-              propertyguestpaxno AS "suggestPropertyGuestPaxNo"
-       FROM property 
+              p.nearbylocation AS "suggestPropertyLocation",
+              p.propertybedtype AS "suggestPropertyBedType",
+              p.propertyguestpaxno AS "suggestPropertyGuestPaxNo"
+       FROM properties p 
        JOIN rate r ON p.rateid = r.rateid
-       WHERE propertyid = $1`,
+       WHERE p.propertyid = $1`,
       [propertyid]
     );
 
@@ -1526,7 +1529,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
     const property = propertyResult.rows[0];
 
     // Fetch customer and reservation details
-    const customerReservationResult = await pool.query(
+    const customerReservationResult = await client.query(
       `SELECT rc.rclastname AS "customerLastName",
               rc.rcemail AS "customerEmail",
               rc.rctitle AS "customerTitle",
@@ -1534,7 +1537,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
               r.propertyidcheckindatetime AS "reservationCheckInDate",
               r.checkoutdatetime AS "reservationCheckOutDate"
        FROM reservation r
-       JOIN property p ON p.propertyid = r.propertyid
+       JOIN properties p ON p.propertyid = r.propertyid
        JOIN reservation_customer_details rc ON rc.rcID = r.rcID
        WHERE r.reservationid = $1`,
       [reservationid]
@@ -1571,7 +1574,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
       <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: red">rejected</span> due to room unavailability during the selected time.</p> 
       <p>A similar room with the details below is suggested for your consideration:</p> 
       <h3>Property Name: ${property.suggestpropertyAddress}</h3>
-      <p><b>Property Location:</b> ${property.suggestPropertyLocation}</p>
+      <p><b>Property Location:</b> ${property.suggestpropertyAddress}</p>
       <p><b>Bed Type:</b> ${property.suggestPropertyBedType}</p>
       <p><b>Pax Number:</b> ${property.suggestPropertyGuestPaxNo}</p>
       <p><b>Price: <i>RM${property.suggestPropertyPrice}</i></b></p><br/>
@@ -1586,21 +1589,27 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
     await transporter.sendMail(mailOptions);
 
     // Add log record
-    await pool.query(
+    await client.query(
       `INSERT INTO Book_and_Pay_Log 
        (logTime, log, userID)
        VALUES ($1, $2, $3)`,
       [
-        new Date(),
-        `Admin suggested new room (${property.suggestpropertyAddress}) for reservation #${reservationid}`,
-        userid
+        timestamp,
+        `Suggested new room (${property.suggestpropertyAddress})`,
+        creatorid
       ]
     );
 
-    await pool.query('COMMIT');
+    await client.query('COMMIT');
 
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reservationid, timestamp, "Reservation", "POST", "Suggest Alternative Room", creatorid, creatorUsername]
+    );
+    
     res.status(200).json({ message: 'Email Sent Successfully' });
-
   } catch (err) {
     console.error('Error sending email:', err);
     res.status(500).json({ message: 'Failed to send email', error: err.message });
@@ -1610,6 +1619,8 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
 // Send Properties Listing Request Notification From Moderator
 app.post('/propertyListingRequest/:propertyid', async (req, res) => {
   const { propertyid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
@@ -1665,6 +1676,14 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [propertyid, timestamp, "Properties", "POST", "Request Property Listing", creatorid, creatorUsername]
+    );
+    
     res.status(200).json({ message: 'Email Sent Successfully' })
   } catch (err) {
     console.error('Error sending email: ', err);
@@ -1679,10 +1698,13 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
 // Send Property Listing Request Accepted Notification
 app.post("/propertyListingAccept/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
     client = await pool.connect();
+    
     const result = await client.query(
       `SELECT p.propertyaddress, u.ulastname, u.uemail, u.utitle 
        FROM properties p  
@@ -1718,6 +1740,14 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [propertyid, timestamp, "Properties", "POST", "Accept Property Listing", creatorid, creatorUsername]
+    );
+    
     res.status(200).json({ message: "Email Sent Successfully" });
   } catch (err) {
     console.error("Error sending email:", err);
