@@ -2566,13 +2566,17 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
       [reservationStatus, reservationid]
     );
 
+    const userResult = await client.query('SELECT username FROM users WHERE userid = $1', [userid]);
+    const username = userResult.rows.length > 0 ? userResult.rows[0].username : userid; // 查不到就用userid兜底
+
+
     await client.query(
       `INSERT INTO Book_and_Pay_Log 
        (logTime, log, userID)
        VALUES ($1, $2, $3)`,
       [
         new Date(),
-        `${userid} updated reservation status to ${reservationStatus}`,
+        `${username} updated reservation status to ${reservationStatus}`,
         userid
       ]
     );
