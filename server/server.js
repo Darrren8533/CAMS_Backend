@@ -1921,16 +1921,17 @@ app.post('/reservation/:userid', async (req, res) => {
 
     const rcid = customerResult.rows[0].rcid;
 
-    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+
+    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
     const reservationblocktime = new Date(reservationDateTime.getTime() + 30 * 1000); 
 
-    const now = new Date(Date.now() + 8 * 60 * 60 * 1000); // Adjust to UTC+8
+    const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
     let initialStatus = 'Pending';
     if (reservationblocktime <= now) {
       initialStatus = 'Expired';
     }
 
-    console.log(`Creating reservation: blocktime=${reservationblocktime.toISOString()}, status=${initialStatus}`);
+    console.log(`Creating reservation: blocktime (UTC+8)=${reservationblocktime.toISOString()}, status=${initialStatus}`);
 
     const reservationResult = await client.query(
       `INSERT INTO reservation 
@@ -1997,10 +1998,9 @@ async function checkExpiredReservations() {
   try {
     client = await pool.connect();
     const now = new Date(Date.now() + 8 * 60 * 60 * 1000); 
-    const nowISO = now.toISOString();
-    console.log(`[CHECK] Starting expired reservations check at ${nowISO}`);
+    console.log(`[CHECK] Starting expired reservations check at (UTC+8)=${now.toISOString()}`);
 
-
+    // Fetch current database time for reference
     const dbTimeResult = await client.query("SELECT NOW() AT TIME ZONE 'UTC+8' AS db_time");
     const dbTime = dbTimeResult.rows[0].db_time;
     console.log(`[CHECK] Database current time (UTC+8): ${dbTime}`);
@@ -2013,7 +2013,7 @@ async function checkExpiredReservations() {
     );
     console.log(`[CHECK] Found ${pending.rowCount} pending reservations:`);
     pending.rows.forEach(row => {
-      console.log(`[CHECK] Reservation #${row.reservationid}: blocktime=${row.reservationblocktime}, status=${row.reservationstatus}`);
+      console.log(`[CHECK] Reservation #${row.reservationid}: blocktime (UTC+8)=${row.reservationblocktime}, status=${row.reservationstatus}`);
     });
 
 
@@ -2030,7 +2030,7 @@ async function checkExpiredReservations() {
 
     // Log updates to Book_and_Pay_Log
     for (const row of result.rows) {
-      console.log(`[CHECK] Expired reservation #${row.reservationid}, blocktime: ${row.reservationblocktime}`);
+      console.log(`[CHECK] Expired reservation #${row.reservationid}, blocktime (UTC+8): ${row.reservationblocktime}`);
       await client.query(
         `INSERT INTO Book_and_Pay_Log 
          (logTime, log, userID)
