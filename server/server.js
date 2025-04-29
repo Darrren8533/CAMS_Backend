@@ -1994,19 +1994,23 @@ async function checkExpiredReservations() {
   try {
     client = await pool.connect();
     const now = new Date();
+    console.log(`Checking expired reservations at ${now.toISOString()}`);
 
-    // Find reservations that are pending and past their block time
+    // Find and update reservations that are pending and past their block time
     const result = await client.query(
       `UPDATE reservation 
        SET reservationstatus = 'Expired'
        WHERE reservationstatus = 'Pending' 
        AND reservationblocktime <= $1
-       RETURNING reservationid, propertyid, userid`,
+       RETURNING reservationid, propertyid, userid, reservationblocktime`,
       [now]
     );
 
+    console.log(`Found ${result.rowCount} reservations to update`);
+
     // Log updates to Book_and_Pay_Log
     for (const row of result.rows) {
+      console.log(`Updating reservation #${row.reservationid}, blocktime: ${row.reservationblocktime}`);
       await client.query(
         `INSERT INTO Book_and_Pay_Log 
          (logTime, log, userID)
@@ -2020,7 +2024,7 @@ async function checkExpiredReservations() {
     }
 
     if (result.rowCount > 0) {
-      console.log(`Updated ${result.rowCount} reservations to Expired status`);
+      console.log(`Successfully updated ${result.rowCount} reservations to Expired status`);
     }
 
   } catch (err) {
@@ -2032,9 +2036,9 @@ async function checkExpiredReservations() {
   }
 }
 
-// Run check every minute
-setInterval(checkExpiredReservations, 60 * 1000);
 
+// Run check every 30 seconds for quicker testing (adjust as needed)
+setInterval(checkExpiredReservations, 30 * 1000);
 
 // Fetch Book and Pay Log
 app.get('/users/booklog', async (req, res) => {
