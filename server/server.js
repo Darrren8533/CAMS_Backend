@@ -1897,7 +1897,7 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
   }
 });
 
-//Create reservation for property
+// Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
@@ -1923,7 +1923,6 @@ app.post('/reservation/:userid', async (req, res) => {
 
     const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000); 
     const reservationblocktime = new Date(reservationDateTime.getTime() + 1 * 60 * 1000);
-
 
     const now = new Date();
     let initialStatus = 'Pending';
@@ -1988,6 +1987,53 @@ app.post('/reservation/:userid', async (req, res) => {
     }
   }
 });
+
+// Background process to check and update expired reservations
+async function checkExpiredReservations() {
+  let client;
+  try {
+    client = await pool.connect();
+    const now = new Date();
+
+    // Find reservations that are pending and past their block time
+    const result = await client.query(
+      `UPDATE reservation 
+       SET reservationstatus = 'Expired'
+       WHERE reservationstatus = 'Pending' 
+       AND reservationblocktime <= $1
+       RETURNING reservationid, propertyid, userid`,
+      [now]
+    );
+
+    // Log updates to Book_and_Pay_Log
+    for (const row of result.rows) {
+      await client.query(
+        `INSERT INTO Book_and_Pay_Log 
+         (logTime, log, userID)
+         VALUES ($1, $2, $3)`,
+        [
+          now,
+          `Reservation #${row.reservationid} for property #${row.propertyid} expired`,
+          row.userid
+        ]
+      );
+    }
+
+    if (result.rowCount > 0) {
+      console.log(`Updated ${result.rowCount} reservations to Expired status`);
+    }
+
+  } catch (err) {
+    console.error('Error checking expired reservations:', err);
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+}
+
+// Run check every minute
+setInterval(checkExpiredReservations, 60 * 1000);
 
 
 // Fetch Book and Pay Log
