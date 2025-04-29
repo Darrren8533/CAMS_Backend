@@ -1909,7 +1909,8 @@ app.post('/reservation/:userid', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-    
+    await client.query('BEGIN');
+
     const customerResult = await client.query(
       `INSERT INTO reservation_customer_details 
        (rcfirstname, rclastname, rcemail, rcphoneno, rctitle)
@@ -1919,8 +1920,16 @@ app.post('/reservation/:userid', async (req, res) => {
     );
 
     const rcid = customerResult.rows[0].rcid;
-    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const reservationblocktime = new Date(reservationDateTime.getTime() + 60 * 60 * 1000);
+
+    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+    const reservationblocktime = new Date(reservationDateTime.getTime() + 60 * 1000); 
+
+
+    const now = new Date();
+    let initialStatus = 'Pending';
+    if (reservationblocktime <= now) {
+      initialStatus = 'Expired';
+    }
 
     const reservationResult = await client.query(
       `INSERT INTO reservation 
@@ -1937,7 +1946,7 @@ app.post('/reservation/:userid', async (req, res) => {
         request,
         totalprice,
         rcid,
-        'Pending',
+        initialStatus,
         userid
       ]
     );
@@ -1951,7 +1960,7 @@ app.post('/reservation/:userid', async (req, res) => {
        VALUES ($1, $2, $3)`,
       [
         reservationDateTime,
-        `Reservation created: #${reservationid} for property #${propertyid}`,
+        `Reservation created: #${reservationid} for property #${propertyid} (Status: ${initialStatus})`,
         userid
       ]
     );
@@ -1960,7 +1969,8 @@ app.post('/reservation/:userid', async (req, res) => {
 
     res.status(201).json({ 
       message: 'Reservation created successfully', 
-      reservationid 
+      reservationid,
+      reservationstatus: initialStatus
     });
 
   } catch (err) {
@@ -1978,6 +1988,7 @@ app.post('/reservation/:userid', async (req, res) => {
     }
   }
 });
+
 
 // Fetch Book and Pay Log
 app.get('/users/booklog', async (req, res) => {
