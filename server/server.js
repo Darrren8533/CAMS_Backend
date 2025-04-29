@@ -1921,11 +1921,10 @@ app.post('/reservation/:userid', async (req, res) => {
 
     const rcid = customerResult.rows[0].rcid;
 
-    // Use UTC for all timestamps
-    const reservationDateTime = new Date();
-    const reservationblocktime = new Date(reservationDateTime.getTime() + 30 * 1000); // 30 seconds from now for testing
+    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+    const reservationblocktime = new Date(reservationDateTime.getTime() + 30 * 1000); 
 
-    const now = new Date();
+    const now = new Date(Date.now() + 8 * 60 * 60 * 1000); // Adjust to UTC+8
     let initialStatus = 'Pending';
     if (reservationblocktime <= now) {
       initialStatus = 'Expired';
@@ -1992,21 +1991,21 @@ app.post('/reservation/:userid', async (req, res) => {
   }
 });
 
-
+// Background process to check and update expired reservations
 async function checkExpiredReservations() {
   let client;
   try {
     client = await pool.connect();
-    const now = new Date();
+    const now = new Date(Date.now() + 8 * 60 * 60 * 1000); 
     const nowISO = now.toISOString();
     console.log(`[CHECK] Starting expired reservations check at ${nowISO}`);
 
-    // Fetch current database time for reference
-    const dbTimeResult = await client.query('SELECT NOW() AS db_time');
-    const dbTime = dbTimeResult.rows[0].db_time;
-    console.log(`[CHECK] Database current time: ${dbTime}`);
 
-    // Log all pending reservations for debugging
+    const dbTimeResult = await client.query("SELECT NOW() AT TIME ZONE 'UTC+8' AS db_time");
+    const dbTime = dbTimeResult.rows[0].db_time;
+    console.log(`[CHECK] Database current time (UTC+8): ${dbTime}`);
+
+
     const pending = await client.query(
       `SELECT reservationid, reservationblocktime, reservationstatus 
        FROM reservation 
@@ -2017,12 +2016,12 @@ async function checkExpiredReservations() {
       console.log(`[CHECK] Reservation #${row.reservationid}: blocktime=${row.reservationblocktime}, status=${row.reservationstatus}`);
     });
 
-    // Update expired reservations, ensuring timezone consistency
+
     const result = await client.query(
       `UPDATE reservation 
        SET reservationstatus = 'Expired'
        WHERE reservationstatus = 'Pending' 
-       AND reservationblocktime <= NOW()
+       AND reservationblocktime <= (NOW() AT TIME ZONE 'UTC+8')
        RETURNING reservationid, propertyid, userid, reservationblocktime`,
       []
     );
