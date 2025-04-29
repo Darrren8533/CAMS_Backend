@@ -1921,14 +1921,17 @@ app.post('/reservation/:userid', async (req, res) => {
 
     const rcid = customerResult.rows[0].rcid;
 
-    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000); 
-    const reservationblocktime = new Date(reservationDateTime.getTime() + 1 * 60 * 1000);
+    // Use UTC for all timestamps
+    const reservationDateTime = new Date();
+    const reservationblocktime = new Date(reservationDateTime.getTime() + 30 * 1000); // 30 seconds from now for testing
 
     const now = new Date();
     let initialStatus = 'Pending';
     if (reservationblocktime <= now) {
       initialStatus = 'Expired';
     }
+
+    console.log(`Creating reservation: blocktime=${reservationblocktime.toISOString()}, status=${initialStatus}`);
 
     const reservationResult = await client.query(
       `INSERT INTO reservation 
@@ -1969,7 +1972,8 @@ app.post('/reservation/:userid', async (req, res) => {
     res.status(201).json({ 
       message: 'Reservation created successfully', 
       reservationid,
-      reservationstatus: initialStatus
+      reservationstatus: initialStatus,
+      reservationblocktime: reservationblocktime.toISOString()
     });
 
   } catch (err) {
@@ -1988,29 +1992,46 @@ app.post('/reservation/:userid', async (req, res) => {
   }
 });
 
-// Background process to check and update expired reservations
+
 async function checkExpiredReservations() {
   let client;
   try {
     client = await pool.connect();
     const now = new Date();
-    console.log(`Checking expired reservations at ${now.toISOString()}`);
+    const nowISO = now.toISOString();
+    console.log(`[CHECK] Starting expired reservations check at ${nowISO}`);
 
-    // Find and update reservations that are pending and past their block time
+    // Fetch current database time for reference
+    const dbTimeResult = await client.query('SELECT NOW() AS db_time');
+    const dbTime = dbTimeResult.rows[0].db_time;
+    console.log(`[CHECK] Database current time: ${dbTime}`);
+
+    // Log all pending reservations for debugging
+    const pending = await client.query(
+      `SELECT reservationid, reservationblocktime, reservationstatus 
+       FROM reservation 
+       WHERE reservationstatus = 'Pending'`
+    );
+    console.log(`[CHECK] Found ${pending.rowCount} pending reservations:`);
+    pending.rows.forEach(row => {
+      console.log(`[CHECK] Reservation #${row.reservationid}: blocktime=${row.reservationblocktime}, status=${row.reservationstatus}`);
+    });
+
+    // Update expired reservations, ensuring timezone consistency
     const result = await client.query(
       `UPDATE reservation 
        SET reservationstatus = 'Expired'
        WHERE reservationstatus = 'Pending' 
-       AND reservationblocktime <= $1
+       AND reservationblocktime <= NOW()
        RETURNING reservationid, propertyid, userid, reservationblocktime`,
-      [now]
+      []
     );
 
-    console.log(`Found ${result.rowCount} reservations to update`);
+    console.log(`[CHECK] Updated ${result.rowCount} reservations to Expired`);
 
     // Log updates to Book_and_Pay_Log
     for (const row of result.rows) {
-      console.log(`Updating reservation #${row.reservationid}, blocktime: ${row.reservationblocktime}`);
+      console.log(`[CHECK] Expired reservation #${row.reservationid}, blocktime: ${row.reservationblocktime}`);
       await client.query(
         `INSERT INTO Book_and_Pay_Log 
          (logTime, log, userID)
@@ -2023,12 +2044,8 @@ async function checkExpiredReservations() {
       );
     }
 
-    if (result.rowCount > 0) {
-      console.log(`Successfully updated ${result.rowCount} reservations to Expired status`);
-    }
-
   } catch (err) {
-    console.error('Error checking expired reservations:', err);
+    console.error('[CHECK] Error checking expired reservations:', err);
   } finally {
     if (client) {
       client.release();
@@ -2037,7 +2054,6 @@ async function checkExpiredReservations() {
 }
 
 
-// Run check every 30 seconds for quicker testing (adjust as needed)
 setInterval(checkExpiredReservations, 30 * 1000);
 
 // Fetch Book and Pay Log
