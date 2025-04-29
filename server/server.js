@@ -1897,7 +1897,7 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
   }
 });
 
-// Create reservation for property
+//Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
@@ -1909,8 +1909,7 @@ app.post('/reservation/:userid', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-    await client.query('BEGIN');
-
+    
     const customerResult = await client.query(
       `INSERT INTO reservation_customer_details 
        (rcfirstname, rclastname, rcemail, rcphoneno, rctitle)
@@ -1920,18 +1919,8 @@ app.post('/reservation/:userid', async (req, res) => {
     );
 
     const rcid = customerResult.rows[0].rcid;
-
-
     const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const reservationblocktime = new Date(reservationDateTime.getTime() + 30 * 1000); 
-
-    const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    let initialStatus = 'Pending';
-    if (reservationblocktime <= now) {
-      initialStatus = 'Expired';
-    }
-
-    console.log(`Creating reservation: blocktime (UTC+8)=${reservationblocktime.toISOString()}, status=${initialStatus}`);
+    const reservationblocktime = new Date(reservationDateTime.getTime() + 60 * 60 * 1000);
 
     const reservationResult = await client.query(
       `INSERT INTO reservation 
@@ -1948,7 +1937,7 @@ app.post('/reservation/:userid', async (req, res) => {
         request,
         totalprice,
         rcid,
-        initialStatus,
+        'Pending',
         userid
       ]
     );
@@ -1962,7 +1951,7 @@ app.post('/reservation/:userid', async (req, res) => {
        VALUES ($1, $2, $3)`,
       [
         reservationDateTime,
-        `Reservation created: #${reservationid} for property #${propertyid} (Status: ${initialStatus})`,
+        `Reservation created: #${reservationid} for property #${propertyid}`,
         userid
       ]
     );
@@ -1971,9 +1960,7 @@ app.post('/reservation/:userid', async (req, res) => {
 
     res.status(201).json({ 
       message: 'Reservation created successfully', 
-      reservationid,
-      reservationstatus: initialStatus,
-      reservationblocktime: reservationblocktime.toISOString()
+      reservationid 
     });
 
   } catch (err) {
@@ -1991,69 +1978,6 @@ app.post('/reservation/:userid', async (req, res) => {
     }
   }
 });
-
-// Background process to check and update expired reservations
-async function checkExpiredReservations() {
-  let client;
-  try {
-    client = await pool.connect();
-    const now = new Date(Date.now() + 8 * 60 * 60 * 1000); 
-    console.log(`[CHECK] Starting expired reservations check at (UTC+8)=${now.toISOString()}`);
-
-    // Fetch current database time for reference
-    const dbTimeResult = await client.query("SELECT NOW() AT TIME ZONE 'UTC+8' AS db_time");
-    const dbTime = dbTimeResult.rows[0].db_time;
-    console.log(`[CHECK] Database current time (UTC+8): ${dbTime}`);
-
-
-    const pending = await client.query(
-      `SELECT reservationid, reservationblocktime, reservationstatus 
-       FROM reservation 
-       WHERE reservationstatus = 'Pending'`
-    );
-    console.log(`[CHECK] Found ${pending.rowCount} pending reservations:`);
-    pending.rows.forEach(row => {
-      console.log(`[CHECK] Reservation #${row.reservationid}: blocktime (UTC+8)=${row.reservationblocktime}, status=${row.reservationstatus}`);
-    });
-
-
-    const result = await client.query(
-      `UPDATE reservation 
-       SET reservationstatus = 'Expired'
-       WHERE reservationstatus = 'Pending' 
-       AND reservationblocktime <= (NOW() AT TIME ZONE 'UTC+8')
-       RETURNING reservationid, propertyid, userid, reservationblocktime`,
-      []
-    );
-
-    console.log(`[CHECK] Updated ${result.rowCount} reservations to Expired`);
-
-    // Log updates to Book_and_Pay_Log
-    for (const row of result.rows) {
-      console.log(`[CHECK] Expired reservation #${row.reservationid}, blocktime (UTC+8): ${row.reservationblocktime}`);
-      await client.query(
-        `INSERT INTO Book_and_Pay_Log 
-         (logTime, log, userID)
-         VALUES ($1, $2, $3)`,
-        [
-          now,
-          `Reservation #${row.reservationid} for property #${row.propertyid} expired`,
-          row.userid
-        ]
-      );
-    }
-
-  } catch (err) {
-    console.error('[CHECK] Error checking expired reservations:', err);
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-}
-
-
-setInterval(checkExpiredReservations, 30 * 1000);
 
 // Fetch Book and Pay Log
 app.get('/users/booklog', async (req, res) => {
