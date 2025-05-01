@@ -1592,8 +1592,8 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
 
     // Add log record
     await client.query(
-      `INSERT INTO Book_and_Pay_Log 
-       (logTime, log, userID)
+      `INSERT INTO book_and_pay_log 
+       (logtime, log, userid)
        VALUES ($1, $2, $3)`,
       [
         timestamp,
@@ -1770,6 +1770,7 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
 
   try {
     client = await pool.connect();
+    
     const result = await client.query(
       `SELECT p.propertyaddress, u.ulastname, u.uemail, u.utitle 
        FROM properties p  
@@ -1829,14 +1830,19 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
 app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
   const { userids } = req.body;
   const { reservationid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  let client;
 
   if (!userids || userids.length === 0) {
     return res.status(400).json({ message: 'User IDs are required' });
   }
 
   try {
+    client = await pool.connect();
+    
     // Fetch user emails
-    const userResult = await pool.query(
+    const userResult = await client.query(
       `SELECT uemail FROM users WHERE userid = ANY($1::int[])`,
       [userids]
     );
@@ -1848,7 +1854,7 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
     const selectedEmails = userResult.rows.map(record => record.uemail);
 
     // Fetch reservation and customer details
-    const reservationResult = await pool.query(
+    const reservationResult = await client.query(
       `SELECT 
         p.propertyaddress AS "reservationProperty", 
         r.propertyidcheckindatetime AS "reservationCheckInDate", 
@@ -1901,6 +1907,14 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reservationid, timestamp, "Reservation", "POST", "Send Suggest Notification", creatorid, creatorUsername]
+    );
+    
     res.status(200).json({ message: 'Email Sent Successfully' });
 
   } catch (err) {
@@ -1913,12 +1927,13 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
+  const { creatorid, creatorUsername } = req.query;
+  let client;
 
   if (!userid) {
     return res.status(400).json({ error: 'User ID is required' });
   }
 
-  let client;
   try {
     client = await pool.connect();
     
@@ -1970,11 +1985,17 @@ app.post('/reservation/:userid', async (req, res) => {
 
     await client.query('COMMIT');
 
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reservationid, reservationDateTime, "Reservation", "POST", "Make Reservation", creatorid, creatorUsername]
+    );
+
     res.status(201).json({ 
       message: 'Reservation created successfully', 
       reservationid 
     });
-
   } catch (err) {
     if (client) {
       await client.query('ROLLBACK');
