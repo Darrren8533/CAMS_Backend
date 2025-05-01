@@ -1927,7 +1927,6 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
-  const { creatorid, creatorUsername } = req.query;
   let client;
 
   if (!userid) {
@@ -1985,13 +1984,6 @@ app.post('/reservation/:userid', async (req, res) => {
 
     await client.query('COMMIT');
 
-    await client.query (
-      `INSERT INTO audit_trail (
-          entityid, timestamp, entitytype, actiontype, action, userid, username
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, reservationDateTime, "Reservation", "POST", "Make Reservation", creatorid, creatorUsername]
-    );
-
     res.status(201).json({ 
       message: 'Reservation created successfully', 
       reservationid 
@@ -2023,7 +2015,7 @@ app.get('/users/booklog', async (req, res) => {
           b.userid, 
           b.logtime AS timestamp, 
           b.log AS action
-      FROM Book_and_Pay_Log b
+      FROM book_and_pay_log b
       ORDER BY b.logtime DESC;
     `);
 
@@ -2881,7 +2873,6 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
     }
   }
 });
-
 
 // Upload user avatar
 app.post('/users/uploadAvatar/:userid', async (req, res) => {
