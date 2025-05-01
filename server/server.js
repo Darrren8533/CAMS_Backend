@@ -1764,6 +1764,8 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
 // Send Property Listing Request Rejected Notification
 app.post("/propertyListingReject/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
@@ -1804,6 +1806,14 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [propertyid, timestamp, "Properties", "POST", "Reject Property Listing", creatorid, creatorUsername]
+    );
+    
     res.status(200).json({ message: "Email Sent Successfully" });
   } catch (err) {
     console.error("Error sending email:", err);
