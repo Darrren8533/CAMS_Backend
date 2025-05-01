@@ -740,7 +740,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       nearbyLocation,
       facilities
   } = req.body;
-
+  const { usergroup } = req.query;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
   
   if (!req.files || req.files.length === 0) {
@@ -859,12 +859,14 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       
       await client.query('COMMIT');
 
-      await client.query(
-        `INSERT INTO audit_trail (
-            entityid, timestamp, entitytype, actiontype, action, userid, username
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [propertyid, timestamp, "Properties", "POST", "Create New Property", userid, username]
-      );
+      if (usergroup === "Administrator") {
+        await client.query(
+          `INSERT INTO audit_trail (
+              entityid, timestamp, entitytype, actiontype, action, userid, username
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [propertyid, timestamp, "Properties", "POST", "Create New Property", userid, username]
+        );
+      }
 
       res.status(201).json({ message: 'Property created successfully', propertyid });
   } catch (err) {
