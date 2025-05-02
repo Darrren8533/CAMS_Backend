@@ -2985,6 +2985,88 @@ app.post('/users/assignRole', async (req, res) => {
   }
 });
 
+// GET endpoint to fetch reviews for a specific property
+app.get('/reviews/:propertyid', async (req, res) => {
+    const propertyid = req.params.propertyid;
+    
+    if (!propertyid) {
+        return res.status(400).json({ message: 'Property ID is required' });
+    }
+
+    let client;
+    try {
+        client = await pool.connect();
+        
+        // Get reviews for the property with user information
+        const reviewsQuery = {
+            text: `
+                SELECT r.reviewid, r.review, r.reviewdate, 
+                       u.userid, u.username, u.uimage as avatar,
+                       EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.timestamp)) as years_on_platform
+                FROM reviews r
+                JOIN users u ON r.userid = u.userid
+                WHERE r.propertyid = $1
+                ORDER BY r.reviewdate DESC
+            `,
+            values: [propertyid]
+        };
+        
+        const reviewsResult = await client.query(reviewsQuery);
+        
+        // Format reviews for frontend
+        const reviews = reviewsResult.rows.map(row => {
+            const reviewDate = new Date(row.reviewdate);
+            const now = new Date();
+            
+            // Calculate relative time for datePosted
+            let datePosted;
+            const diffTime = Math.abs(now - reviewDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays < 7) {
+                datePosted = `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+            } else if (diffDays < 30) {
+                const weeks = Math.floor(diffDays / 7);
+                datePosted = `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+            } else if (diffDays < 365) {
+                const months = Math.floor(diffDays / 30);
+                datePosted = `${months} ${months === 1 ? 'month' : 'months'} ago`;
+            } else {
+                const years = Math.floor(diffDays / 365);
+                datePosted = `${years} ${years === 1 ? 'year' : 'years'} ago`;
+            }
+            
+            return {
+                id: row.reviewid,
+                name: row.username,
+                avatar: row.avatar || `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 99)}.jpg`,
+                yearsOnPlatform: Math.floor(row.years_on_platform) || 0,
+                isNew: row.years_on_platform < 1,
+                datePosted: datePosted,
+                comment: row.review
+            };
+        });
+        
+        // Create a summary object
+        let summary = {
+            totalReviews: reviews.length,
+        };
+        
+        res.json({
+            reviews: reviews,
+            summary: summary
+        });
+        
+    } catch (error) {
+        console.error('Error fetching property reviews:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    } finally {
+        if (client) {
+            client.release();
+        }
+    }
+});
+
 // Audit Trails
 app.get("/auditTrails", async (req, res) => {
   const { userid } = req.query;
