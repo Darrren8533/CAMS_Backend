@@ -340,7 +340,11 @@ app.post("/google-login", async (req, res) => {
   } catch (error) {
       console.error("Google Login Error:", error);
       console.error("Full Error Stack:", error.stack);
-      return res.status(500).json({ success: false, message: "Google Login Failed", error: error.message });
+        return res.status(500).json({
+        success: false,
+        message: "Google Login Failed",
+        error: error.message
+      });
   }
 });
 
