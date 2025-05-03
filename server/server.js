@@ -312,13 +312,17 @@ app.post("/google-login", async (req, res) => {
         username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
 
           // Insert new Google user
-        const insertResult = await client.query(
-          `INSERT INTO users (uemail, ufirstname, ulastname, uimage, utitle, ustatus, usergroup, uactivation, username)
-           VALUES ($1, $2, $3, $4, 'Mr.', 'login', 'Customer', 'Active', $5) 
-           RETURNING userid`,
-          [email, given_name || null, family_name || null, picture || null, username]
-        );
-
+          const insertResult = await client.query(
+            `INSERT INTO users (
+                clusterid, uemail, ufirstname, ulastname, uimage, utitle, ustatus, usergroup, uactivation, username
+            )
+            VALUES (
+                $1, $2, $3, $4, $5, 'Mr.', 'login', 'Customer', 'Active', $6
+            )
+            RETURNING userid`,
+            [null, email, given_name || null, family_name || null, picture || null, username]
+          );
+        
         const newuserid = insertResult.rows[0].userid;
 
         return res.status(201).json({
