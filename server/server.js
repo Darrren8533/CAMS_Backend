@@ -249,137 +249,152 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Google login
 app.post("/google-login", async (req, res) => {
-  const { token } = req.body;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
-
-  try {
-      // Get user info from Google
-      const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: { Authorization: `Bearer ${token}` },
-      });
+    const { token } = req.body;
     
-      const googleUser = await response.json();
-
-      if (!googleUser.email) {
-          return res.status(401).json({ success: false, message: "Invalid Google token" });
-      }
-
-      const { email, given_name, family_name, picture } = googleUser;
-    
-      console.log("Google User Data:", googleUser); 
-
-      const client = await pool.connect();
-
-    try {
-      // Check if user exists
-      const result = await client.query(
-        "SELECT userid, usergroup, uactivation, username FROM users WHERE uemail = $1",
-        [email]
-      );
-
-      let username;
-      
-      if (result.rows.length > 0) {
-          // Existing user, update login status
-        const { userid, usergroup, uactivation, username: existingUsername } = result.rows[0];
-        
-        username = existingUsername;
-
-        await client.query("UPDATE users SET ustatus = 'login' WHERE uemail = $1", [email]);
-
-        const googleLoginAuditTrail = await client.query (
-          `INSERT INTO audit_trail (
-              entityid, timestamp, entitytype, actiontype, action, userid, username
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            userid, timestamp, "Users", "POST", "Google Login", userid, existingUsername
-          ]
-        );
-        
-        return res.status(200).json({
-          success: true,
-          message: "Google Login Successful",
-          userid: userid,
-          usergroup: usergroup,
-          uactivation: uactivation,
-          username,
-        });
-      } else {
-          const randomSixDigits = generateRandomSixDigits();
-        username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
-
-          // Insert new Google user
-        const insertResult = await client.query(
-          `INSERT INTO users (uemail, ufirstname, ulastname, uimage, utitle, ustatus, usergroup, uactivation, username)
-           VALUES ($1, $2, $3, $4, 'Mr.', 'login', 'Customer', 'Active', $5) 
-           RETURNING userid`,
-          [email, given_name || null, family_name || null, picture || null, username]
-        );
-
-        const newuserid = insertResult.rows[0].userid;
-
-        return res.status(201).json({
-          success: true,
-          message: "Google Login Successful, new user created",
-          userid: newuserid,
-          usergroup: "Customer",
-          uactivation: "Active",
-          username,
-        });
-      }
-    } finally {
-      client.release();
-      }
-  } catch (error) {
-      console.error("Google Login Error:", error);
-      return res.status(500).json({ success: false, message: "Google Login Failed" });
-  }
-});
-
-app.post('/logout', async (req, res) => {
-  const { userid } = req.body;
-  let client;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
-
-  try {
-    client = await pool.connect();
-    
-    const query = {
-      text: `UPDATE users SET ustatus = 'logout' WHERE userid = $1`,
-      values: [userid]
-    };
-    
-    await client.query(query);
-
-    const usernameQuery = await client.query (
-      `SELECT username FROM users WHERE userid = $1`,
-      [userid]
-    );
-
-    const username = usernameQuery.rows[0].username;
-
-    const logoutAuditTrail = await client.query (
-      `INSERT INTO audit_trail (
-          entityid, timestamp, entitytype, actiontype, action, userid, username
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        userid, timestamp, "Users", "POST", "Logout", userid, username
-      ]
-    );
-
-    res.status(200).json({ message: 'Logout Successful', success: true });
-  } catch (err) {
-    console.error('Error during logout:', err);
-    res.status(500).json({ message: 'Server error', success: false });
-  } finally {
-    if (client) {
-      client.release();
+    // Check if token exists
+    if (!token) {
+        return res.status(400).json({ success: false, message: "No token provided" });
     }
-  }
+    
+    console.log("Received token:", token.substring(0, 20) + "..."); // Log partial token for debugging
+    
+    const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    
+    try {
+        // Get user info from Google
+        const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (!response.ok) {
+            const googleError = await response.json();
+            console.error("Google API error:", googleError);
+            return res.status(401).json({ 
+                success: false, 
+                message: "Failed to verify Google token", 
+                details: googleError 
+            });
+        }
+        
+        const googleUser = await response.json();
+        console.log("Google User Data:", googleUser);
+        
+        if (!googleUser.email) {
+            return res.status(401).json({ success: false, message: "Invalid Google token or missing email" });
+        }
+        
+        const { email, given_name, family_name, picture } = googleUser;
+        
+        const client = await pool.connect();
+        try {
+            // Check if user exists
+            const result = await client.query(
+                "SELECT userid, usergroup, uactivation, username FROM users WHERE uemail = $1",
+                [email]
+            );
+            
+            let username;
+            
+            if (result.rows.length > 0) {
+                // Existing user, update login status
+                const { userid, usergroup, uactivation, username: existingUsername } = result.rows[0];
+                
+                username = existingUsername;
+                await client.query("UPDATE users SET ustatus = 'login' WHERE uemail = $1", [email]);
+                
+                const googleLoginAuditTrail = await client.query(
+                    `INSERT INTO audit_trail (
+                        entityid, timestamp, entitytype, actiontype, action, userid, username
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    [
+                        userid, timestamp, "Users", "POST", "Google Login", userid, existingUsername
+                    ]
+                );
+                
+                return res.status(200).json({
+                    success: true,
+                    message: "Google Login Successful",
+                    userid: userid,
+                    usergroup: usergroup,
+                    uactivation: uactivation,
+                    username,
+                });
+            } else {
+                // New user registration
+                try {
+                    // Generate a random username suffix
+                    const randomSixDigits = generateRandomSixDigits();
+                    username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
+                    
+                    // Create a secure random password for the user
+                    const randomPassword = crypto.randomBytes(16).toString('hex');
+                    
+                    // Insert new Google user with all required fields
+                    const insertResult = await client.query(
+                        `INSERT INTO users (
+                            uemail, ufirstname, ulastname, uimage, 
+                            utitle, ustatus, usergroup, uactivation, 
+                            username, password
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+                        RETURNING userid`,
+                        [
+                            email, 
+                            given_name || '', 
+                            family_name || '', 
+                            picture || '', 
+                            'Mr.', 
+                            'login', 
+                            'Customer', 
+                            'Active', 
+                            username, 
+                            randomPassword // Store a random password for Google users
+                        ]
+                    );
+                    
+                    const newuserid = insertResult.rows[0].userid;
+                    
+                    // Add audit trail for new user
+                    await client.query(
+                        `INSERT INTO audit_trail (
+                            entityid, timestamp, entitytype, actiontype, action, userid, username
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [
+                            newuserid, timestamp, "Users", "POST", "Google Registration", newuserid, username
+                        ]
+                    );
+                    
+                    return res.status(201).json({
+                        success: true,
+                        message: "Google Login Successful, new user created",
+                        userid: newuserid,
+                        usergroup: "Customer",
+                        uactivation: "Active",
+                        username,
+                    });
+                } catch (insertError) {
+                    console.error("Error creating new user:", insertError);
+                    return res.status(500).json({ 
+                        success: false, 
+                        message: "Failed to create new user account", 
+                        details: insertError.message 
+                    });
+                }
+            }
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error("Google Login Error:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Google Login Failed", 
+            details: error.message 
+        });
+    }
 });
 
 app.get('/users/customers', async (req, res) => {
