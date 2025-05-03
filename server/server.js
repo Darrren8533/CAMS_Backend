@@ -2933,7 +2933,23 @@ app.post('/reviews', async (req, res) => {
 
     let client;
     try {
-        client = await pool.connect(); 
+        client = await pool.connect();
+        
+        // First check if the user is a Customer
+        const userCheckQuery = {
+            text: 'SELECT usergroup FROM users WHERE userid = $1',
+            values: [userid]
+        };
+        
+        const userResult = await client.query(userCheckQuery);
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        if (userResult.rows[0].usergroup !== 'Customer') {
+            return res.status(403).json({ message: 'Only customers can submit reviews' });
+        }
 
         const query = {
             text: `INSERT INTO reviews (userid, propertyid, review, reviewdate) 
