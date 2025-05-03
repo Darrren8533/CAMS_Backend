@@ -3074,10 +3074,11 @@ app.get('/reviews/:propertyid', async (req, res) => {
         const reviewsQuery = {
             text: `
                 SELECT r.reviewid, r.review, r.reviewdate, 
-                       u.userid, u.username, u.uimage as avatar,
+                       u.userid, u.username, u.uimage as avatar, p.propertyid, p.rating, p.ratingno,
                        EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.timestamp)) as years_on_platform
                 FROM reviews r
                 JOIN users u ON r.userid = u.userid
+                JOIN properties p ON r.propertyid = p.propertyid
                 WHERE r.propertyid = $1
                 ORDER BY r.reviewdate DESC
             `,
