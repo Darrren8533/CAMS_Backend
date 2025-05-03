@@ -2933,11 +2933,11 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
 });
 
 app.post('/reviews', async (req, res) => {
-    const { userid, propertyid, review } = req.body; 
+    const { userid, propertyid, review, rating } = req.body; 
     const reviewdate = new Date(); 
 
-    if (!userid || !propertyid || !review) {
-        return res.status(400).json({ message: 'Missing required fields: userid, propertyid, or review' });
+    if (!userid || !propertyid || !review || !rating) {
+        return res.status(400).json({ message: 'Missing required fields: userid, propertyid, review, or rating' });
     }
 
     let client;
@@ -2960,15 +2960,57 @@ app.post('/reviews', async (req, res) => {
             return res.status(403).json({ message: 'Only customers can submit reviews' });
         }
 
-        const query = {
+        // Begin transaction
+        await client.query('BEGIN');
+
+        // Insert the review
+        const insertReviewQuery = {
             text: `INSERT INTO reviews (userid, propertyid, review, reviewdate) 
                    VALUES ($1, $2, $3, $4) RETURNING reviewid;`,
             values: [userid, propertyid, review, reviewdate]
         };
-
-        const result = await client.query(query); 
-        res.status(201).json({ message: 'Review added successfully', reviewid: result.rows[0].reviewid });
+        
+        const reviewResult = await client.query(insertReviewQuery);
+        
+        // Update the property rating
+        const propertyQuery = {
+            text: 'SELECT rating, ratingno FROM properties WHERE propertyid = $1',
+            values: [propertyid]
+        };
+        
+        const propertyResult = await client.query(propertyQuery);
+        
+        if (propertyResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Property not found' });
+        }
+        
+        const currentProperty = propertyResult.rows[0];
+        let newRatingNo = currentProperty.ratingno ? currentProperty.ratingno + 1 : 1;
+        let currentTotalRating = currentProperty.rating ? currentProperty.rating * currentProperty.ratingno : 0;
+        let newTotalRating = currentTotalRating + parseFloat(rating);
+        let newAverageRating = newTotalRating / newRatingNo;
+        
+        // Update the property with the new rating
+        const updatePropertyQuery = {
+            text: 'UPDATE properties SET rating = $1, ratingno = $2 WHERE propertyid = $3',
+            values: [newAverageRating, newRatingNo, propertyid]
+        };
+        
+        await client.query(updatePropertyQuery);
+        
+        // Commit transaction
+        await client.query('COMMIT');
+        
+        res.status(201).json({ 
+            message: 'Review added successfully', 
+            reviewid: reviewResult.rows[0].reviewid,
+            newRating: newAverageRating
+        });
     } catch (error) {
+        if (client) {
+            await client.query('ROLLBACK');
+        }
         console.error('Error adding review:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     } finally {
