@@ -3148,13 +3148,10 @@ app.get('/reviews/:propertyid', async (req, res) => {
             };
         });
         
-        // Return consolidated response with reviews, property data, and summary
+        // Return consolidated response with reviews and property data
         res.status(200).json({
             reviews: reviews,
-            property: propertyData,
-            summary: {
-                totalReviews: reviews.length
-            }
+            property: propertyData
         });
         
     } catch (error) {
