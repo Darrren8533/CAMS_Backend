@@ -249,7 +249,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Updated Google login endpoint with focus on proper user creation
+// Google Login
 app.post("/google-login", async (req, res) => {
     const { token } = req.body;
     
@@ -257,8 +257,6 @@ app.post("/google-login", async (req, res) => {
     if (!token) {
         return res.status(400).json({ success: false, message: "No token provided" });
     }
-    
-    console.log("Received token:", token.substring(0, 20) + "..."); // Log partial token for debugging
     
     const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
     
@@ -330,23 +328,12 @@ app.post("/google-login", async (req, res) => {
             } else {
                 // New user registration
                 try {
-                    // Generate a random username suffix
                     const randomSixDigits = generateRandomSixDigits();
                     username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
                     
                     // Generate a secure random password for the user (required by DB schema)
                     const hashedPassword = crypto.createHash('sha256').update(crypto.randomBytes(16).toString('hex')).digest('hex');
-                    
-                    console.log("Attempting to create new user:", {
-                        email: email,
-                        username: username,
-                        firstname: given_name || '',
-                        lastname: family_name || '',
-                        // Don't log passwords even for debugging
-                    });
-                    
-                    // Insert new Google user with all required fields
-                    // Explicitly handle all NOT NULL fields from the schema
+            
                     const insertQuery = `
                         INSERT INTO users (
                             uemail, ufirstname, ulastname, uimage, 
@@ -369,10 +356,7 @@ app.post("/google-login", async (req, res) => {
                         username, 
                         hashedPassword // Hashed password
                     ];
-                    
-                    console.log("Executing query with parameters:", insertValues.map((v, i) => 
-                        i !== 9 ? v : '[REDACTED]')); // Don't log the password
-                    
+                
                     const insertResult = await client.query(insertQuery, insertValues);
                     
                     const newuserid = insertResult.rows[0].userid;
