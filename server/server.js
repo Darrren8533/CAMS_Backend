@@ -14,7 +14,7 @@ const bcrypt = require('bcryptjs');
 const saltRounds = 10;
 
 const connectionString = process.env.DATABASE_URL ;
-
+const crypto = require('crypto');
 const port = 5432;
 
 const pool = new Pool({
@@ -249,6 +249,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Updated Google login endpoint with focus on proper user creation
 app.post("/google-login", async (req, res) => {
     const { token } = req.body;
     
@@ -303,15 +304,20 @@ app.post("/google-login", async (req, res) => {
                 username = existingUsername;
                 await client.query("UPDATE users SET ustatus = 'login' WHERE uemail = $1", [email]);
                 
-                const googleLoginAuditTrail = await client.query(
-                    `INSERT INTO audit_trail (
-                        entityid, timestamp, entitytype, actiontype, action, userid, username
-                    )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                    [
-                        userid, timestamp, "Users", "POST", "Google Login", userid, existingUsername
-                    ]
-                );
+                try {
+                    const googleLoginAuditTrail = await client.query(
+                        `INSERT INTO audit_trail (
+                            entityid, timestamp, entitytype, actiontype, action, userid, username
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [
+                            userid, timestamp, "Users", "POST", "Google Login", userid, existingUsername
+                        ]
+                    );
+                } catch (auditError) {
+                    console.error("Error logging audit trail:", auditError);
+                    // Continue even if audit trail fails
+                }
                 
                 return res.status(200).json({
                     success: true,
@@ -328,44 +334,65 @@ app.post("/google-login", async (req, res) => {
                     const randomSixDigits = generateRandomSixDigits();
                     username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
                     
-                    // Create a secure random password for the user
-                    const randomPassword = crypto.randomBytes(16).toString('hex');
+                    // Generate a secure random password for the user (required by DB schema)
+                    const hashedPassword = crypto.createHash('sha256').update(crypto.randomBytes(16).toString('hex')).digest('hex');
+                    
+                    console.log("Attempting to create new user:", {
+                        email: email,
+                        username: username,
+                        firstname: given_name || '',
+                        lastname: family_name || '',
+                        // Don't log passwords even for debugging
+                    });
                     
                     // Insert new Google user with all required fields
-                    const insertResult = await client.query(
-                        `INSERT INTO users (
+                    // Explicitly handle all NOT NULL fields from the schema
+                    const insertQuery = `
+                        INSERT INTO users (
                             uemail, ufirstname, ulastname, uimage, 
                             utitle, ustatus, usergroup, uactivation, 
                             username, password
                         )
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-                        RETURNING userid`,
-                        [
-                            email, 
-                            given_name || '', 
-                            family_name || '', 
-                            picture || '', 
-                            'Mr.', 
-                            'login', 
-                            'Customer', 
-                            'Active', 
-                            username, 
-                            randomPassword // Store a random password for Google users
-                        ]
-                    );
+                        RETURNING userid
+                    `;
+                    
+                    const insertValues = [
+                        email, 
+                        given_name || '', 
+                        family_name || '', 
+                        picture || '', 
+                        'Mr.', // Default title
+                        'login', // Status
+                        'Customer', // User group
+                        'Active', // Activation status
+                        username, 
+                        hashedPassword // Hashed password
+                    ];
+                    
+                    console.log("Executing query with parameters:", insertValues.map((v, i) => 
+                        i !== 9 ? v : '[REDACTED]')); // Don't log the password
+                    
+                    const insertResult = await client.query(insertQuery, insertValues);
                     
                     const newuserid = insertResult.rows[0].userid;
+                    console.log("New user created with ID:", newuserid);
                     
                     // Add audit trail for new user
-                    await client.query(
-                        `INSERT INTO audit_trail (
-                            entityid, timestamp, entitytype, actiontype, action, userid, username
-                        )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                        [
-                            newuserid, timestamp, "Users", "POST", "Google Registration", newuserid, username
-                        ]
-                    );
+                    try {
+                        await client.query(
+                            `INSERT INTO audit_trail (
+                                entityid, timestamp, entitytype, actiontype, action, userid, username
+                            )
+                            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                            [
+                                newuserid, timestamp, "Users", "POST", "Google Registration", newuserid, username
+                            ]
+                        );
+                    } catch (auditError) {
+                        console.error("Error logging registration audit trail:", auditError);
+                        // Continue even if audit trail fails
+                    }
                     
                     return res.status(201).json({
                         success: true,
