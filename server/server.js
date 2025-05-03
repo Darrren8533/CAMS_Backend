@@ -2626,28 +2626,6 @@ app.get('/reservationTable', async (req, res) => {
     }
 });
 
-
-// Update reservation status to "Canceled"
-app.put('/cancelReservation/:reservationid', async (req, res) => {
-  const { reservationid } = req.params;
-
-  try {
-    await pool.request()
-      .input('reservationid', sql.Int, reservationid)
-      .input('reservationStatus', sql.VarChar, 'Canceled')
-      .query(`
-        UPDATE Reservation 
-        SET reservationStatus = @reservationStatus
-        WHERE reservationid = @reservationid;
-      `);
-
-    res.status(200).json({ message: 'Reservation status updated to Canceled' });
-  } catch (err) {
-    console.error('Error updating reservation status:', err);
-    res.status(500).json({ message: 'Internal Server Error', details: err.message });
-  }
-});
-
 // Update reservation status
 app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
@@ -2663,8 +2641,7 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
     );
 
     const userResult = await client.query('SELECT username FROM users WHERE userid = $1', [userid]);
-    const username = userResult.rows.length > 0 ? userResult.rows[0].username : userid; // 查不到就用userid兜底
-
+    const username = userResult.rows.length > 0 ? userResult.rows[0].username : userid;
 
     await client.query(
       `INSERT INTO Book_and_Pay_Log 
