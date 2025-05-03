@@ -3087,6 +3087,33 @@ app.get('/reviews/:propertyid', async (req, res) => {
         
         const reviewsResult = await client.query(reviewsQuery);
         
+        // If no reviews, get property data directly
+        let propertyData;
+        if (reviewsResult.rows.length === 0) {
+            const propertyQuery = {
+                text: 'SELECT propertyid, rating, ratingno FROM properties WHERE propertyid = $1',
+                values: [propertyid]
+            };
+            const propertyResult = await client.query(propertyQuery);
+            
+            if (propertyResult.rows.length === 0) {
+                return res.status(404).json({ message: 'Property not found' });
+            }
+            
+            propertyData = {
+                propertyid: propertyResult.rows[0].propertyid,
+                rating: propertyResult.rows[0].rating || 0,
+                ratingno: propertyResult.rows[0].ratingno || 0
+            };
+        } else {
+            // Extract property data from the first review row
+            propertyData = {
+                propertyid: reviewsResult.rows[0].propertyid,
+                rating: reviewsResult.rows[0].rating || 0,
+                ratingno: reviewsResult.rows[0].ratingno || 0
+            };
+        }
+        
         // Format reviews for frontend
         const reviews = reviewsResult.rows.map(row => {
             const reviewDate = new Date(row.reviewdate);
@@ -3121,18 +3148,17 @@ app.get('/reviews/:propertyid', async (req, res) => {
             };
         });
         
-        // Create a summary object
-        let summary = {
-            totalReviews: reviews.length,
-        };
-        
-        res.json({
+        // Return consolidated response with reviews, property data, and summary
+        res.status(200).json({
             reviews: reviews,
-            summary: summary
+            property: propertyData,
+            summary: {
+                totalReviews: reviews.length
+            }
         });
         
     } catch (error) {
-        console.error('Error fetching property reviews:', error);
+        console.error('Error fetching reviews:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     } finally {
         if (client) {
