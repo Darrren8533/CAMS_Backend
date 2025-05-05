@@ -18,8 +18,8 @@ const crypto = require('crypto');
 const port = 5432;
 
 // Add encryption and decryption keys and functions
-const encryptionKey = process.env.ENCRYPTION_KEY; // 256-bit key
-const iv = process.env.ENCRYPTION_IV; // Initialization vector
+const encryptionKey = Buffer.from('12345678901234567890123456789012', 'utf8'); // 256-bit key
+const iv = Buffer.from('1234567890123456', 'utf8'); // Initialization vector
 
 // Encryption function
 const encrypt = (text) => {
