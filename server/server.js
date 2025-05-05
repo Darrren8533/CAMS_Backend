@@ -18,12 +18,9 @@ const crypto = require('crypto');
 const port = 5432;
 
 // Add encryption and decryption keys and functions
-const encryptionKey = crypto.randomBytes(32); // 256-bit key
-const iv = crypto.randomBytes(16); // Initialization vector
+const encryptionKey = process.env.ENCRYPTION_KEY; // 256-bit key
+const iv = process.env.ENCRYPTION_IV; // Initialization vector
 
-
-console.log("encryptionKey:", encryptionKey);
-console.log("iv:", iv);
 // Encryption function
 const encrypt = (text) => {
   const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(encryptionKey), iv);
