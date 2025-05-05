@@ -21,6 +21,9 @@ const port = 5432;
 const encryptionKey = crypto.randomBytes(32); // 256-bit key
 const iv = crypto.randomBytes(16); // Initialization vector
 
+
+console.log("encryptionKey:", encryptionKey);
+console.log("iv:", iv);
 // Encryption function
 const encrypt = (text) => {
   const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(encryptionKey), iv);
