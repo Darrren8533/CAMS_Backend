@@ -249,6 +249,8 @@ app.post('/login', async (req, res) => {
           { expiresIn: '24h' } // Token expires in 24 hours
         );
 
+        console.log('Generated Token:', token);
+
         return res.status(200).json({
           message: 'Login Successful',
           success: true,
