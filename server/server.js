@@ -23,7 +23,7 @@ const iv = Buffer.from('1234567890123456', 'utf8'); // Initialization vector
 
 // Encryption function
 const encrypt = (text) => {
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(encryptionKey), iv);
+  const cipher = crypto.createCipheriv('aes-256-cbc', encryptionKey, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   return encrypted;
@@ -31,7 +31,7 @@ const encrypt = (text) => {
 
 // Decryption function
 const decrypt = (encryptedText) => {
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(encryptionKey), iv);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', encryptionKey, iv);
   let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;
