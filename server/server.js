@@ -2041,6 +2041,9 @@ app.post('/reservation/:userid', async (req, res) => {
 
     const reservationid = reservationResult.rows[0].reservationid;
 
+    const userResult = await client.query('SELECT username FROM users WHERE userid = $1', [userid]);
+    const username = userResult.rows.length > 0 ? userResult.rows[0].username : userid;
+
     // Add log entry to Book_and_Pay_Log table
     await client.query(
       `INSERT INTO Book_and_Pay_Log 
@@ -2048,7 +2051,7 @@ app.post('/reservation/:userid', async (req, res) => {
        VALUES ($1, $2, $3)`,
       [
         reservationDateTime,
-        `Reservation created: #${reservationid} for property #${propertyid}`,
+        `${username} created reservation #${reservationid} for property #${propertyid}`,
         userid
       ]
     );
