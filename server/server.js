@@ -2829,7 +2829,7 @@ app.get('/users/getDecryptedPassword/:userid', async (req, res) => {
     }
 
     const encryptedPassword = result.rows[0].password;
-    
+    console.log("encryptedPassword:", encryptedPassword);
     try {
       // Decrypt password
       const decryptedPassword = decrypt(encryptedPassword);
