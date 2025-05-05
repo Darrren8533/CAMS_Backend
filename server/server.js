@@ -13,9 +13,31 @@ require("dotenv").config({ path: path.resolve(__dirname, '.env') });
 const bcrypt = require('bcryptjs');
 const saltRounds = 10;
 
-const connectionString = process.env.DATABASE_URL ;
+// const connectionString = process.env.DATABASE_URL ;
 const crypto = require('crypto');
 const port = 5432;
+
+// Add encryption and decryption keys and functions
+const encryptionKey = crypto.randomBytes(32); // 256-bit key
+const iv = crypto.randomBytes(16); // Initialization vector
+
+// Encryption function
+const encrypt = (text) => {
+  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(encryptionKey), iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return encrypted;
+};
+
+// Decryption function
+const decrypt = (encryptedText) => {
+  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(encryptionKey), iv);
+  let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+};
+
+const connectionString = process.env.DATABASE_URL ;
 
 const pool = new Pool({
   connectionString,
@@ -111,7 +133,8 @@ app.post('/register', async (req, res) => {
       return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
     
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // Encrypt the password
+    const encryptedPassword = encrypt(password);
     const defaultAvatarBase64 = await getDefaultAvatarBase64();
 
     const insertUserQuery = {
@@ -125,7 +148,7 @@ app.post('/register', async (req, res) => {
       `,
       values: [
         username,
-        hashedPassword, 
+        encryptedPassword, 
         email,
         "Mr.",
         'Customer',
@@ -189,54 +212,61 @@ app.post('/login', async (req, res) => {
       return res.status(403).json({ message: 'Your account is locked due to multiple failed attempts.', success: false });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    
-    if (passwordMatch) {
-      delete failedAttempts[username]; // or email
-      await client.query(`
-        UPDATE users SET ustatus = 'login' WHERE username = $1 OR uemail = $1
-      `, [username]);
-
-      const userid = user.userid;
-
-      const loginAuditTrail = await client.query (
-          `INSERT INTO audit_trail (
-              entityid, timestamp, entitytype, actiontype, action, userid, username
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            userid, timestamp, "Users", "POST", "Login", userid, username
-          ]
-      );
-
-      return res.status(200).json({
-        message: 'Login Successful',
-        success: true,
-        userid: user.userid,
-        usergroup: user.usergroup,
-        uactivation: user.uactivation
-      });
-    } else {
-      const now = Date.now();
+    // Decrypt the password
+    try {
+      const decryptedPassword = decrypt(user.password);
+      const passwordMatch = (password === decryptedPassword);
       
-      if (!failedAttempts[username]) {
-        failedAttempts[username] = { count: 1, lastAttemptTime: now };
-      } else {
-        failedAttempts[username].count++;
-        failedAttempts[username].lastAttemptTime = now;
-      }
-
-      if (failedAttempts[username].count >= 5) {
-        
+      if (passwordMatch) {
+        delete failedAttempts[username]; // or email
         await client.query(`
-          UPDATE users SET uactivation = 'Inactive'
-          WHERE username = $1 OR uemail = $1
+          UPDATE users SET ustatus = 'login' WHERE username = $1 OR uemail = $1
         `, [username]);
 
-        delete failedAttempts[username];
+        const userid = user.userid;
+
+        const loginAuditTrail = await client.query (
+            `INSERT INTO audit_trail (
+                entityid, timestamp, entitytype, actiontype, action, userid, username
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              userid, timestamp, "Users", "POST", "Login", userid, username
+            ]
+        );
+
+        return res.status(200).json({
+          message: 'Login Successful',
+          success: true,
+          userid: user.userid,
+          usergroup: user.usergroup,
+          uactivation: user.uactivation
+        });
+      } else {
+        const now = Date.now();
         
-        return res.status(403).json({ message: 'Account locked due to too many failed login attempts.', success: false });
+        if (!failedAttempts[username]) {
+          failedAttempts[username] = { count: 1, lastAttemptTime: now };
+        } else {
+          failedAttempts[username].count++;
+          failedAttempts[username].lastAttemptTime = now;
+        }
+
+        if (failedAttempts[username].count >= 5) {
+          
+          await client.query(`
+            UPDATE users SET uactivation = 'Inactive'
+            WHERE username = $1 OR uemail = $1
+          `, [username]);
+
+          delete failedAttempts[username];
+          
+          return res.status(403).json({ message: 'Account locked due to too many failed login attempts.', success: false });
+        }
+        return res.status(401).json({ message: 'Invalid username or password', success: false });
       }
+    } catch (decryptError) {
+      console.error('Error decrypting password:', decryptError);
       return res.status(401).json({ message: 'Invalid username or password', success: false });
     }
   } catch (err) {
@@ -374,8 +404,9 @@ app.post("/google-login", async (req, res) => {
                     const randomSixDigits = generateRandomSixDigits();
                     username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
                     
-                    // Generate a secure random password for the user (required by DB schema)
-                    const hashedPassword = crypto.createHash('sha256').update(crypto.randomBytes(16).toString('hex')).digest('hex');
+                    // Generate a random password for Google login users and encrypt it
+                    const randomPassword = crypto.randomBytes(16).toString('hex');
+                    const encryptedPassword = encrypt(randomPassword);
             
                     const insertQuery = `
                         INSERT INTO users (
@@ -397,7 +428,7 @@ app.post("/google-login", async (req, res) => {
                         'Customer', // User group
                         'Active', // Activation status
                         username, 
-                        hashedPassword // Hashed password
+                        encryptedPassword // Encrypted password
                     ];
                 
                     const insertResult = await client.query(insertQuery, insertValues);
@@ -579,12 +610,14 @@ app.post('/users/createModerator', async (req, res) => {
     }
 
     const defaultAvatar = await getDefaultAvatarBase64();
+    // Encrypt the password
+    const encryptedPassword = encrypt(password);
 
     const createModeratorResult = await client.query(
       `INSERT INTO users (ufirstname, ulastname, username, password, uemail, uphoneno, ucountry, uzipcode, utitle, usergroup, ustatus, uactivation, uimage, clusterid, timestamp)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Mr.', 'Moderator', 'registered', 'Active', $9, '1', $10)
        RETURNING userid`,
-      [firstName, lastName, username, password, email, phoneNo, country, zipCode, defaultAvatar, timestamp]
+      [firstName, lastName, username, encryptedPassword, email, phoneNo, country, zipCode, defaultAvatar, timestamp]
     );
 
     const entityid = createModeratorResult.rows[0].userid;
@@ -2801,10 +2834,12 @@ app.post('/forgot-password', async (req, res) => {
     // Generate a new random password
     const newPassword = Math.random().toString(36).slice(-8);
 
+    // Encrypt the new password
+    const encryptedPassword = encrypt(newPassword);
 
     await client.query(
       'UPDATE users SET password = $1 WHERE userid = $2',
-      [newPassword, userid]
+      [encryptedPassword, userid]
     );
 
     // Email configuration
@@ -2886,7 +2921,8 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
   try {
     client = await pool.connect();
 
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // Encrypt the password
+    const encryptedPassword = encrypt(password);
 
     // Update user profile
     const query = `
@@ -2907,7 +2943,7 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
       RETURNING userid;
     `;
 
-    const values = [username, hashedPassword, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userid];
+    const values = [username, encryptedPassword, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userid];
     const result = await client.query(query, values);
 
     if (result.rows.length === 0) {
