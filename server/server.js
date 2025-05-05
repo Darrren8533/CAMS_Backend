@@ -2811,6 +2811,44 @@ app.get('/getUserInfo/:userid', async (req, res) => {
   }
 });
 
+// Get decrypted user password
+app.get('/users/getDecryptedPassword/:userid', async (req, res) => {
+  const { userid } = req.params;
+  let client;
+
+  try {
+    client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT password FROM users WHERE userid = $1`,
+      [userid] 
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const encryptedPassword = result.rows[0].password;
+    
+    try {
+      // Decrypt password
+      const decryptedPassword = decrypt(encryptedPassword);
+      res.status(200).json({ success: true, password: decryptedPassword });
+    } catch (decryptError) {
+      console.error('Error decrypting password:', decryptError);
+      res.status(500).json({ success: false, message: 'Failed to decrypt password' });
+    }
+
+  } catch (err) {
+    console.error('Error fetching password:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
 // Forget Password
 app.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
