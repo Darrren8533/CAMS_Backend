@@ -12,8 +12,6 @@ const sharp = require('sharp');
 require("dotenv").config({ path: path.resolve(__dirname, '.env') });
 const bcrypt = require('bcryptjs');
 const saltRounds = 10;
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = 'Testing123';
 
 // const connectionString = process.env.DATABASE_URL ;
 const crypto = require('crypto');
@@ -199,7 +197,7 @@ app.post('/login', async (req, res) => {
     client = await pool.connect();
 
     const result = await client.query(`
-      SELECT userid, usergroup, uactivation, password, username, uemail
+      SELECT userid, usergroup, uactivation, password 
       FROM users 
       WHERE (username = $1 OR uemail = $1)
     `, [username]);
@@ -237,27 +235,12 @@ app.post('/login', async (req, res) => {
             ]
         );
 
-        // Generate a JWT token
-        const token = jwt.sign(
-          { 
-            userid: user.userid,
-            username: user.username,
-            usergroup: user.usergroup,
-            email: user.uemail
-          }, 
-          JWT_SECRET, 
-          { expiresIn: '24h' } // Token expires in 24 hours
-        );
-
-        console.log('Generated Token:', token);
-
         return res.status(200).json({
           message: 'Login Successful',
           success: true,
           userid: user.userid,
           usergroup: user.usergroup,
-          uactivation: user.uactivation,
-          token: token // Return the JWT token to the client
+          uactivation: user.uactivation
         });
       } else {
         const now = Date.now();
@@ -296,25 +279,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Create a middleware to verify JWT tokens
-const verifyToken = (req, res, next) => {
-  // Get the token from the Authorization header
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN format
-  
-  if (!token) {
-    return res.status(401).json({ message: 'Access denied. No token provided.' });
-  }
-
-  try {
-    // Verify the token
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // Add the decoded user info to the request object
-    next(); // Proceed to the next middleware/route handler
-  } catch (error) {
-    res.status(400).json({ message: 'Invalid token.' });
-  }
-};
 
 //Logout
 app.post('/logout', async (req, res) => {
@@ -358,20 +322,6 @@ app.post('/logout', async (req, res) => {
       client.release();
     }
   }
-});
-
-//Refresh Token
-app.post('/refresh-token', verifyToken, (req, res) => {
-  // Generate a new token
-  const { userid, username, usergroup, email } = req.user;
-  
-  const newToken = jwt.sign(
-    { userid, username, usergroup, email },
-    JWT_SECRET,
-    { expiresIn: '24h' }
-  );
-  
-  res.json({ token: newToken });
 });
 
 // Google Login
