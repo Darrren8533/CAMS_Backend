@@ -2818,7 +2818,7 @@ app.get('/users/getDecryptedPassword/:userid', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+    console.log("userid:", userid);
     const result = await client.query(
       `SELECT password FROM users WHERE userid = $1`,
       [userid] 
