@@ -279,6 +279,8 @@ app.post('/login', async (req, res) => {
   }
 });
 
+
+//Logout
 app.post('/logout', async (req, res) => {
   const { userid } = req.body;
   let client;
