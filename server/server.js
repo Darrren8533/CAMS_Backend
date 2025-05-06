@@ -3079,6 +3079,18 @@ app.post('/reviews', async (req, res) => {
             return res.status(403).json({ message: 'Please login first' });
         }
 
+        // Check if user has already submitted a review for this property
+        const existingReviewQuery = {
+            text: 'SELECT reviewid FROM reviews WHERE userid = $1 AND propertyid = $2',
+            values: [userid, propertyid]
+        };
+        
+        const existingReviewResult = await client.query(existingReviewQuery);
+        
+        if (existingReviewResult.rows.length > 0) {
+            return res.status(409).json({ message: 'You have already submitted a review for this property' });
+        }
+
         // Begin transaction
         await client.query('BEGIN');
 
