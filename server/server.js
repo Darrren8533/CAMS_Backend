@@ -3076,7 +3076,7 @@ app.post('/reviews', async (req, res) => {
         }
         
         if (userResult.rows[0].usergroup !== 'Customer') {
-            return res.status(403).json({ message: 'Only customers can submit reviews' });
+            return res.status(403).json({ message: 'Please login first' });
         }
 
         // Begin transaction
