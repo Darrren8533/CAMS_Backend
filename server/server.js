@@ -3072,7 +3072,7 @@ app.post('/reviews', async (req, res) => {
         const userResult = await client.query(userCheckQuery);
         
         if (userResult.rows.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'Please login first' });
         }
         
         if (userResult.rows[0].usergroup !== 'Customer') {
