@@ -2669,8 +2669,6 @@ app.get('/reservationTable', async (req, res) => {
 app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { reservationStatus, userid } = req.body;
-  const { creatorid, creatorUsername } = req.query;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
@@ -2701,13 +2699,6 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
       return res.status(404).json({ message: 'error' });
     }
 
-    await client.query (
-      `INSERT INTO audit_trail (
-          entityid, timestamp, entitytype, actiontype, action, userid, username
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "PATCH", "Update Reservation Status", creatorid, creatorUsername]
-    );
-
     res.status(200).json({ message: 'success' });
   } catch (error) {
     console.error('error:', error);
@@ -2722,6 +2713,8 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
 // Remove reservation
 app.delete('/removeReservation/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
   try {
     // Delete reservation from the Reservation table
@@ -2734,6 +2727,8 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
       return res.status(404).json({ message: 'Reservation not found' });
     }
 
+    await client.query('COMMIT');
+
     await client.query(
       `INSERT INTO Book_and_Pay_Log 
        (logTime, log, userID)
@@ -2745,7 +2740,12 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
       ]
     );
 
-    await client.query('COMMIT');
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reservationid, timestamp, "Reservation", "DELETE", "Remove Reservation", creatorid, creatorUsername]
+    );
 
     res.status(200).json({ message: 'Reservation removed successfully' });
   } catch (err) {
