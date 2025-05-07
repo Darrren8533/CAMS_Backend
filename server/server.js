@@ -762,7 +762,7 @@ app.put('/users/suspenduser/:userid', async (req, res) => {
 
     // Suspend the user and set status to logout
     await client.query(
-      `UPDATE users SET uactivation = 'Inactive', ustatus = 'logout' WHERE userid = $1`,
+      `UPDATE users SET uactivation = 'Inactive' WHERE userid = $1`,
       [userid]
     );
 
