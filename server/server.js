@@ -209,7 +209,7 @@ app.post('/login', async (req, res) => {
     const user = result.rows[0];
 
     if (user.uactivation === 'Inactive') {
-      return res.status(403).json({ message: 'Your account is locked due to multiple failed attempts.', success: false });
+      return res.status(403).json({ message: 'This account has been suspended. Please try to contact the administrator to activate your account.', success: false });
     }
 
     // Decrypt the password
