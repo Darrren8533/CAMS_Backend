@@ -2927,7 +2927,6 @@ app.post('/forgot-password', async (req, res) => {
   }
 });
 
-
 // Get User Details
 app.get('/users/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -2966,6 +2965,8 @@ app.get('/users/:userid', async (req, res) => {
 app.put('/users/updateProfile/:userid', async (req, res) => {
   const { userid } = req.params;
   const { username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode } = req.body;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
@@ -3000,7 +3001,14 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
       return res.status(404).json({ message: 'User not found or no changes made.', success: false });
     }
 
-  res.status(200).json({ message: 'Profile updated successfully.', success: true });
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [userid, timestamp, "Users", "PUT", "Update Profile", creatorid, creatorUsername]
+    );
+
+    res.status(200).json({ message: 'Profile updated successfully.', success: true });
 } catch (err) {
     console.error('Error updating user profile:', err);
   res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
@@ -3015,6 +3023,8 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
 app.post('/users/uploadAvatar/:userid', async (req, res) => {
   const { userid } = req.params;
   const { uimage } = req.body;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
   if (!userid || isNaN(userid)) {
     return res.status(400).json({ message: 'Invalid userid' });
@@ -3044,12 +3054,18 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
       return res.status(500).json({ message: 'Failed to update user avatar' });
     }
 
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [userid, timestamp, "Users", "POST", "Upload Avatar", creatorid, creatorUsername]
+    );
+
     return res.status(200).json({
       success: true,
       message: 'Avatar uploaded successfully',
       data: result.rows[0], 
     });
-
   } catch (err) {
     console.error('Error uploading avatar:', err.message);
     return res.status(500).json({ message: `Error uploading avatar: ${err.message}` });
@@ -3062,6 +3078,7 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
 
 app.post('/reviews', async (req, res) => {
     const { userid, propertyid, review, rating } = req.body; 
+    const { creatorUsername } = req.query;
     const reviewdate = new Date(); 
 
     if (!userid || !propertyid || !review || !rating) {
@@ -3141,6 +3158,13 @@ app.post('/reviews', async (req, res) => {
         
         // Commit transaction
         await client.query('COMMIT');
+
+        await client.query (
+          `INSERT INTO audit_trail (
+              entityid, timestamp, entitytype, actiontype, action, userid, username
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [propertyid, reviewdate, "Properties", "POST", "Review Property", userid, creatorUsername]
+        );
         
         res.status(201).json({ 
             message: 'Review added successfully', 
@@ -3268,6 +3292,8 @@ app.get('/reviews/:propertyid', async (req, res) => {
 // Assign role to user
 app.post('/users/assignRole', async (req, res) => {
   const { userid, role } = req.body;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
@@ -3285,6 +3311,13 @@ app.post('/users/assignRole', async (req, res) => {
     };
     
     await client.query(query);
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [userid, timestamp, "Users", "POST", "Assign User Role", creatorid, creatorUsername]
+    );
 
     res.status(200).json({ message: 'Role assigned successfully', success: true });
   } catch (err) {
