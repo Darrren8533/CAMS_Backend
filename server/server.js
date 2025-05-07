@@ -3292,8 +3292,8 @@ app.get('/reviews/:propertyid', async (req, res) => {
 // Assign role to user
 app.post('/users/assignRole', async (req, res) => {
   const { userid, role } = req.body;
-  const { creatorid, creatorUsername } = req.query;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  // const { creatorid, creatorUsername } = req.query;
+  // const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
@@ -3312,12 +3312,12 @@ app.post('/users/assignRole', async (req, res) => {
     
     await client.query(query);
 
-    await client.query (
-      `INSERT INTO audit_trail (
-          entityid, timestamp, entitytype, actiontype, action, userid, username
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userid, timestamp, "Users", "POST", "Assign User Role", creatorid, creatorUsername]
-    );
+    // await client.query (
+    //  `INSERT INTO audit_trail (
+    //      entityid, timestamp, entitytype, actiontype, action, userid, username
+    //    ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    //    [userid, timestamp, "Users", "POST", "Assign User Role", creatorid, creatorUsername]
+    // );
 
     res.status(200).json({ message: 'Role assigned successfully', success: true });
   } catch (err) {
