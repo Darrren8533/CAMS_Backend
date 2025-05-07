@@ -760,9 +760,9 @@ app.put('/users/suspenduser/:userid', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Suspend the user
+    // Suspend the user and set status to logout
     await client.query(
-      `UPDATE users SET uactivation = 'Inactive' WHERE userid = $1`,
+      `UPDATE users SET uactivation = 'Inactive', ustatus = 'logout' WHERE userid = $1`,
       [userid]
     );
 
