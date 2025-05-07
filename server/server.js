@@ -2094,18 +2094,19 @@ app.post('/reservation/:userid', async (req, res) => {
     await client.query('COMMIT');
 
     res.status(201).json({ 
-      message: 'Reservation created successfully', 
-      reservationid 
-    });
-  } catch (err) {
-    if (client) {
-      await client.query('ROLLBACK');
-    }
-    console.error('Error inserting reservation data:', err);
-    res.status(500).json({ 
-      message: 'Internal Server Error', 
-      details: err.message 
-    });
+        message: 'Reservation created successfully', 
+        reservationid 
+      });
+    } catch (err) {
+      if (client) {
+        await client.query('ROLLBACK');
+      }
+    
+      console.error('Error inserting reservation data:', err);
+      res.status(500).json({ 
+        message: 'Internal Server Error', 
+        details: err.message 
+      });
   } finally {
     if (client) {
       client.release();
@@ -2668,6 +2669,8 @@ app.get('/reservationTable', async (req, res) => {
 app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { reservationStatus, userid } = req.body;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
@@ -2697,6 +2700,13 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ message: 'error' });
     }
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reservationid, timestamp, "Reservation", "PATCH", "Update Reservation Status", creatorid, creatorUsername]
+    );
 
     res.status(200).json({ message: 'success' });
   } catch (error) {
