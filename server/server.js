@@ -2094,19 +2094,18 @@ app.post('/reservation/:userid', async (req, res) => {
     await client.query('COMMIT');
 
     res.status(201).json({ 
-        message: 'Reservation created successfully', 
-        reservationid 
-      });
-    } catch (err) {
-      if (client) {
-        await client.query('ROLLBACK');
-      }
-    
-      console.error('Error inserting reservation data:', err);
-      res.status(500).json({ 
-        message: 'Internal Server Error', 
-        details: err.message 
-      });
+       message: 'Reservation created successfully', 
+      reservationid 
+    });
+  } catch (err) {
+    if (client) {
+      await client.query('ROLLBACK');
+    }
+    console.error('Error inserting reservation data:', err);
+    res.status(500).json({ 
+      message: 'Internal Server Error', 
+      details: err.message 
+    }); 
   } finally {
     if (client) {
       client.release();
