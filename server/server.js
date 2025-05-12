@@ -3186,20 +3186,29 @@ app.post('/reviews', async (req, res) => {
 
 app.get('/reviews/:propertyid', async (req, res) => {
     const propertyid = req.params.propertyid;
-    
+
     if (!propertyid) {
         return res.status(400).json({ message: 'Property ID is required' });
+    }
+
+    // Function to format rating
+    function formatRating(rating) {
+        if (rating == null) return '0.0';
+        const num = Number(rating);
+        const rounded = Number(num.toFixed(2));
+        return rounded % 1 === 0 ? `${rounded}.0` : `${rounded}`;
     }
 
     let client;
     try {
         client = await pool.connect();
-        
+
         // Get reviews for the property with user information
         const reviewsQuery = {
             text: `
                 SELECT r.reviewid, r.review, r.reviewdate, 
-                       u.userid, u.username, u.uimage as avatar, p.propertyid, p.rating, p.ratingno,
+                       u.userid, u.username, u.uimage as avatar, 
+                       p.propertyid, p.rating, p.ratingno,
                        EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.timestamp)) as years_on_platform
                 FROM reviews r
                 JOIN users u ON r.userid = u.userid
@@ -3209,10 +3218,9 @@ app.get('/reviews/:propertyid', async (req, res) => {
             `,
             values: [propertyid]
         };
-        
+
         const reviewsResult = await client.query(reviewsQuery);
-        
-        // If no reviews, get property data directly
+
         let propertyData;
         if (reviewsResult.rows.length === 0) {
             const propertyQuery = {
@@ -3220,35 +3228,33 @@ app.get('/reviews/:propertyid', async (req, res) => {
                 values: [propertyid]
             };
             const propertyResult = await client.query(propertyQuery);
-            
+
             if (propertyResult.rows.length === 0) {
                 return res.status(404).json({ message: 'Property not found' });
             }
-            
+
+            const row = propertyResult.rows[0];
             propertyData = {
-                propertyid: propertyResult.rows[0].propertyid,
-                rating: propertyResult.rows[0].rating || 0,
-                ratingno: propertyResult.rows[0].ratingno || 0
+                propertyid: row.propertyid,
+                rating: formatRating(row.rating),
+                ratingno: row.ratingno || 0
             };
         } else {
-            // Extract property data from the first review row
+            const row = reviewsResult.rows[0];
             propertyData = {
-                propertyid: reviewsResult.rows[0].propertyid,
-                rating: reviewsResult.rows[0].rating || 0,
-                ratingno: reviewsResult.rows[0].ratingno || 0
+                propertyid: row.propertyid,
+                rating: formatRating(row.rating),
+                ratingno: row.ratingno || 0
             };
         }
-        
-        // Format reviews for frontend
+
         const reviews = reviewsResult.rows.map(row => {
             const reviewDate = new Date(row.reviewdate);
             const now = new Date();
-            
-            // Calculate relative time for datePosted
-            let datePosted;
             const diffTime = Math.abs(now - reviewDate);
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
+
+            let datePosted;
             if (diffDays < 7) {
                 datePosted = `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
             } else if (diffDays < 30) {
@@ -3261,24 +3267,23 @@ app.get('/reviews/:propertyid', async (req, res) => {
                 const years = Math.floor(diffDays / 365);
                 datePosted = `${years} ${years === 1 ? 'year' : 'years'} ago`;
             }
-            
+
             return {
                 id: row.reviewid,
                 name: row.username,
-                avatar: row.avatar || null, // Return the avatar as is, frontend will handle formatting
+                avatar: row.avatar || null,
                 yearsOnPlatform: Math.floor(row.years_on_platform) || 0,
                 isNew: row.years_on_platform < 1,
                 datePosted: datePosted,
                 comment: row.review
             };
         });
-        
-        // Return consolidated response with reviews and property data
+
         res.status(200).json({
             reviews: reviews,
             property: propertyData
         });
-        
+
     } catch (error) {
         console.error('Error fetching reviews:', error);
         res.status(500).json({ message: 'Internal Server Error' });
