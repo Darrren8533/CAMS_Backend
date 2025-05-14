@@ -900,7 +900,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       
       // Insert rate
       const rateResult = await client.query(
-          `INSERT INTO rate (rateamount, ratetype, period)
+          `INSERT INTO rate (normalrate, ratetype, period)
            VALUES ($1, $2, $3)
            RETURNING rateid`,
           [propertyPrice, "DefaultType", "DefaultPeriod"]
@@ -995,7 +995,7 @@ app.get('/product', async (req, res) => {
     client = await pool.connect();
     
     const query = `
-      SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.rateamount, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
+      SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.normalrate, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
       FROM properties p
       JOIN rate r ON p.rateid = r.rateid
       JOIN categories c ON p.categoryid = c.categoryid
@@ -1092,7 +1092,7 @@ app.get('/propertiesListingTable', async (req, res) => {
           u.ulastname,
           u.username,
           u.usergroup,
-          r.rateamount,
+          r.normalrate,
           cl.clustername,
           c.categoryname
         FROM properties p
@@ -1118,7 +1118,7 @@ app.get('/propertiesListingTable', async (req, res) => {
           u.ulastname,
           u.username,
           u.usergroup,
-          r.rateamount,
+          r.normalrate,
           cl.clustername,
           c.categoryname
         FROM properties p
@@ -1236,7 +1236,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 
         await client.query(
             `UPDATE rate 
-             SET rateamount = $1 
+             SET normalrate = $1 
              WHERE rateid = $2`,
             [propertyPrice, propertyResult.rows[0].rateid]
         );
@@ -1620,7 +1620,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
     
     const propertyResult = await client.query(
       `SELECT p.propertyaddress AS "suggestPropertyAddress",
-              r.rateamount AS "suggestPropertyPrice",
+              r.normalrate AS "suggestPropertyPrice",
               p.nearbylocation AS "suggestPropertyLocation",
               p.propertybedtype AS "suggestPropertyBedType",
               p.propertyguestpaxno AS "suggestPropertyGuestPaxNo"
