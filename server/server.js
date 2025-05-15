@@ -900,10 +900,10 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       
       // Insert rate
       const rateResult = await client.query(
-          `INSERT INTO rate (normalrate, ratetype, period)
-           VALUES ($1, $2, $3)
+          `INSERT INTO rate (normalrate, period)
+           VALUES ($1, $2)
            RETURNING rateid`,
-          [propertyPrice, "DefaultType", "DefaultPeriod"]
+          [propertyPrice, "DefaultPeriod"]
       );
     
       const rateID = rateResult.rows[0].rateid;
