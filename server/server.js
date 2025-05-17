@@ -3045,9 +3045,30 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Process the image to ensure it's not too large
+    let processedImage = uimage;
+    if (uimage.length > 200000) { // If image is larger than ~200KB
+      try {
+        // Create a buffer from base64 string
+        const buffer = Buffer.from(uimage, 'base64');
+        
+        // Use sharp to resize and compress the image
+        const compressedBuffer = await sharp(buffer)
+          .resize({ width: 200, height: 200, fit: 'inside' }) // Resize to smaller dimensions
+          .jpeg({ quality: 60 }) // Use higher compression (lower quality)
+          .toBuffer();
+          
+        // Convert back to base64
+        processedImage = compressedBuffer.toString('base64');
+      } catch (err) {
+        console.error('Error processing image:', err);
+        // Fall back to original image if processing fails
+      }
+    }
+
     const result = await client.query(
       `UPDATE users SET uimage = $1 WHERE userid = $2 RETURNING userid, uimage`,
-      [uimage, userid]
+      [processedImage, userid]
     );
 
     if (result.rows.length === 0) {
