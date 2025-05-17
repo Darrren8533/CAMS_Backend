@@ -2972,29 +2972,93 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
   try {
     client = await pool.connect();
 
-    // Encrypt the password
-    const encryptedPassword = encrypt(password);
+    // 1. Build SET clause and parameter array, only including fields provided in the request
+    let setClause = [];
+    let values = [];
+    let paramIndex = 1;
 
-    // Update user profile
+    // 2. Check and add each field (if it exists)
+    if (username !== undefined) {
+      setClause.push(`username = $${paramIndex++}`);
+      values.push(username);
+    }
+
+    if (password !== undefined) {
+      // Encrypt the password
+      const encryptedPassword = encrypt(password);
+      setClause.push(`password = $${paramIndex++}`);
+      values.push(encryptedPassword);
+    }
+
+    if (ufirstname !== undefined) {
+      setClause.push(`ufirstname = $${paramIndex++}`);
+      values.push(ufirstname);
+    }
+
+    if (ulastname !== undefined) {
+      setClause.push(`ulastname = $${paramIndex++}`);
+      values.push(ulastname);
+    }
+
+    if (udob !== undefined) {
+      setClause.push(`udob = $${paramIndex++}`);
+      values.push(udob);
+    }
+
+    if (utitle !== undefined) {
+      // Validate title length does not exceed database limit
+      if (utitle.length > 50) {
+        return res.status(400).json({ 
+          message: 'Title is too long, maximum 50 characters allowed.', 
+          success: false 
+        });
+      }
+      setClause.push(`utitle = $${paramIndex++}`);
+      values.push(utitle);
+    }
+
+    if (ugender !== undefined) {
+      setClause.push(`ugender = $${paramIndex++}`);
+      values.push(ugender);
+    }
+
+    if (uemail !== undefined) {
+      setClause.push(`uemail = $${paramIndex++}`);
+      values.push(uemail);
+    }
+
+    if (uphoneno !== undefined) {
+      setClause.push(`uphoneno = $${paramIndex++}`);
+      values.push(uphoneno);
+    }
+
+    if (ucountry !== undefined) {
+      setClause.push(`ucountry = $${paramIndex++}`);
+      values.push(ucountry);
+    }
+
+    if (uzipcode !== undefined) {
+      setClause.push(`uzipcode = $${paramIndex++}`);
+      values.push(uzipcode);
+    }
+
+    // If no fields to update, return error
+    if (setClause.length === 0) {
+      return res.status(400).json({ 
+        message: 'No fields to update provided.', 
+        success: false 
+      });
+    }
+
+    // 3. Build and execute UPDATE query
+    values.push(userid); // Add parameter for WHERE condition
     const query = `
       UPDATE users 
-      SET 
-        username = $1, 
-        password = $2, 
-        ufirstname = $3, 
-        ulastname = $4, 
-        udob = $5,
-        utitle = $6,
-        ugender = $7,
-        uemail = $8, 
-        uphoneno = $9, 
-        ucountry = $10, 
-        uzipcode = $11
-      WHERE userid = $12
+      SET ${setClause.join(', ')}
+      WHERE userid = $${paramIndex}
       RETURNING userid;
     `;
 
-    const values = [username, encryptedPassword, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userid];
     const result = await client.query(query, values);
 
     if (result.rows.length === 0) {
@@ -3005,14 +3069,14 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userid, timestamp, "Users", "PUT", "Update Profile", creatorid, creatorUsername]
+        [userid, timestamp, "Users", "PUT", "Update Profile", creatorid || userid, creatorUsername || username]
     );
 
     res.status(200).json({ message: 'Profile updated successfully.', success: true });
 } catch (err) {
     console.error('Error updating user profile:', err);
-  res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
-  } finally {
+    res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
+} finally {
     if (client) {
       client.release();
     }
