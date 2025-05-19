@@ -2589,7 +2589,6 @@ app.get('/cart', async (req, res) => {
   }
 });
 
-// Get property owner's PayPal ID by property ID
 app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   const propertyId = req.params.propertyId;
   
@@ -2603,7 +2602,7 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     
     // First, get the property owner's user ID
     const ownerResult = await client.query(
-      SELECT userid FROM properties WHERE propertyid = $1,
+      `SELECT userid FROM properties WHERE propertyid = $1`,
       [propertyId]
     );
     
@@ -2615,7 +2614,7 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     
     // Then, get the PayPal ID of that user
     const paypalResult = await client.query(
-      SELECT paypalid, ufirstname, ulastname, usergroup FROM users WHERE userid = $1,
+      `SELECT paypalid, ufirstname, ulastname, usergroup FROM users WHERE userid = $1`,
       [ownerId]
     );
     
@@ -2625,8 +2624,10 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     
     const ownerData = paypalResult.rows[0];
     
-    // Only admins and moderators should have PayPal IDs
-    if (!['Administrator', 'Moderator'].includes(ownerData.usergroup)) {
+    // Normalize usergroup to lowercase for safe comparison
+    const userGroupLower = ownerData.usergroup.toLowerCase();
+    
+    if (!['Administrator', 'Moderator'].includes(userGroupLower)) {
       return res.status(403).json({ error: 'Property not owned by a valid payment recipient' });
     }
     
@@ -2636,7 +2637,7 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     
     res.status(200).json({
       payPalId: ownerData.paypalid,
-      ownerName: ${ownerData.ufirstname} ${ownerData.ulastname},
+      ownerName: `${ownerData.ufirstname} ${ownerData.ulastname}`,
       ownerGroup: ownerData.usergroup
     });
     
@@ -2649,6 +2650,7 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     }
   }
 });
+
 
 // Fetch all reservations (Dashboard)
 app.get('/reservationTable', async (req, res) => {
