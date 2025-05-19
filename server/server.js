@@ -2591,7 +2591,7 @@ app.get('/cart', async (req, res) => {
 
 // Get property owner's PayPal ID
 app.get('/property/owner-paypal/:propertyId', async (req, res) => {
-  const propertyId = req.params.propertyid;
+  const propertyId = req.params.propertyId;
   
   if (!propertyId || isNaN(propertyId)) {
     return res.status(400).json({ error: 'Invalid property ID' });
@@ -2601,6 +2601,7 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   try {
     client = await pool.connect();
     
+    // FIXED: Use correct column name 'userid' instead of 'owner_id'
     const ownerResult = await client.query(
       `SELECT userid FROM properties WHERE propertyid = $1`,
       [propertyId]
