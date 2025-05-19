@@ -2589,6 +2589,67 @@ app.get('/cart', async (req, res) => {
   }
 });
 
+// Get property owner's PayPal ID by property ID
+app.get('/property/owner-paypal/:propertyId', async (req, res) => {
+  const propertyId = req.params.propertyId;
+  
+  if (!propertyId || isNaN(propertyId)) {
+    return res.status(400).json({ error: 'Invalid property ID' });
+  }
+  
+  let client;
+  try {
+    client = await pool.connect();
+    
+    // First, get the property owner's user ID
+    const ownerResult = await client.query(
+      SELECT userid FROM properties WHERE propertyid = $1,
+      [propertyId]
+    );
+    
+    if (ownerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    
+    const ownerId = ownerResult.rows[0].userid;
+    
+    // Then, get the PayPal ID of that user
+    const paypalResult = await client.query(
+      SELECT paypalid, ufirstname, ulastname, usergroup FROM users WHERE userid = $1,
+      [ownerId]
+    );
+    
+    if (paypalResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Property owner not found' });
+    }
+    
+    const ownerData = paypalResult.rows[0];
+    
+    // Only admins and moderators should have PayPal IDs
+    if (!['Admin', 'Moderator'].includes(ownerData.usergroup)) {
+      return res.status(403).json({ error: 'Property not owned by a valid payment recipient' });
+    }
+    
+    if (!ownerData.paypalid) {
+      return res.status(400).json({ error: 'Property owner has no PayPal ID configured' });
+    }
+    
+    res.status(200).json({
+      payPalId: ownerData.paypalid,
+      ownerName: ${ownerData.ufirstname} ${ownerData.ulastname},
+      ownerGroup: ownerData.usergroup
+    });
+    
+  } catch (err) {
+    console.error('Error fetching property owner PayPal ID:', err);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
 // Fetch all reservations (Dashboard)
 app.get('/reservationTable', async (req, res) => {
     const username = req.query.username;
