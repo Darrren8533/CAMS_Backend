@@ -2600,9 +2600,9 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // First, get the property owner's user ID
+    // FIXED: Get correct owner ID
     const ownerResult = await client.query(
-      `SELECT userid FROM properties WHERE propertyid = $1`,
+      `SELECT owner_id FROM properties WHERE propertyid = $1`,
       [propertyId]
     );
     
@@ -2610,9 +2610,9 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
     
-    const ownerId = ownerResult.rows[0].userid;
+    const ownerId = ownerResult.rows[0].owner_id;
     
-    // Then, get the PayPal ID of that user
+    // Get PayPal ID
     const paypalResult = await client.query(
       `SELECT paypalid, ufirstname, ulastname, usergroup FROM users WHERE userid = $1`,
       [ownerId]
@@ -2624,10 +2624,10 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     
     const ownerData = paypalResult.rows[0];
     
-    // Normalize usergroup to lowercase for safe comparison
     const userGroupLower = ownerData.usergroup.toLowerCase();
     
-    if (!['Administrator', 'Moderator'].includes(userGroupLower)) {
+    // FIXED: Compare lowercase values
+    if (!['administrator', 'moderator'].includes(userGroupLower)) {
       return res.status(403).json({ error: 'Property not owned by a valid payment recipient' });
     }
     
@@ -2650,7 +2650,6 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     }
   }
 });
-
 
 // Fetch all reservations (Dashboard)
 app.get('/reservationTable', async (req, res) => {
