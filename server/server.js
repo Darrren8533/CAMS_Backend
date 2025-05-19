@@ -2614,16 +2614,16 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     const ownerId = ownerResult.rows[0].userid;
     
     // Get PayPal ID and user details
-    const paypalid = await client.query(
+    const paypalResult = await client.query(
       `SELECT paypalid, ufirstname, ulastname, usergroup FROM users WHERE userid = $1`,
       [ownerId]
     );
     
-    if (paypalid.rows.length === 0) {
+    if (paypalResult.rows.length === 0) {
       return res.status(404).json({ error: 'Property owner not found' });
     }
     
-    const ownerData = paypalid.rows[0];
+    const ownerData = paypalResult.rows[0];
     
     // Check if owner has valid user group (case-insensitive)
     const userGroupLower = ownerData.usergroup.toLowerCase();
