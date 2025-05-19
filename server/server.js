@@ -2601,9 +2601,9 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // FIXED: Use correct column name 'userID' with proper case
+    // FIXED: Use correct column name 'userid' instead of 'owner_id'
     const ownerResult = await client.query(
-      `SELECT "userID" FROM properties WHERE "propertyID" = $1`,
+      `SELECT userid FROM properties WHERE propertyid = $1`,
       [propertyId]
     );
     
@@ -2611,11 +2611,11 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
     
-    const ownerId = ownerResult.rows[0].userID;
+    const ownerId = ownerResult.rows[0].userid;
     
-    // Get PayPal ID and user details (FIXED: Use correct case-sensitive column names)
+    // Get PayPal ID and user details
     const paypalResult = await client.query(
-      `SELECT "payPalID", "uFirstName", "uLastName", username, "userGroup" FROM users WHERE "userID" = $1`,
+      `SELECT paypalid, ufirstname, ulastname, usergroup FROM users WHERE userid = $1`,
       [ownerId]
     );
     
@@ -2626,38 +2626,20 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     const ownerData = paypalResult.rows[0];
     
     // Check if owner has valid user group (case-insensitive)
-    const userGroupLower = ownerData.userGroup?.toLowerCase() || '';
+    const userGroupLower = ownerData.usergroup.toLowerCase();
     
     if (!['administrator', 'moderator'].includes(userGroupLower)) {
       return res.status(403).json({ error: 'Property not owned by a valid payment recipient' });
     }
     
-    if (!ownerData.payPalID) {
+    if (!ownerData.paypalid) {
       return res.status(400).json({ error: 'Property owner has no PayPal ID configured' });
     }
     
-    // Handle null/undefined names intelligently
-    const firstName = ownerData.uFirstName?.trim() || '';
-    const lastName = ownerData.uLastName?.trim() || '';
-    const username = ownerData.username || '';
-    
-    let displayName = '';
-    
-    // Priority: Full name -> Username -> Generic fallback
-    if (firstName || lastName) {
-      displayName = `${firstName} ${lastName}`.trim();
-    } else if (username) {
-      // Capitalize first letter of username for better appearance
-      displayName = username.charAt(0).toUpperCase() + username.slice(1);
-    } else {
-      displayName = 'Property Owner';
-    }
-    
     res.status(200).json({
-      payPalId: ownerData.payPalID,
-      ownerName: displayName,
-      ownerGroup: ownerData.userGroup,
-      username: ownerData.username
+      payPalId: ownerData.paypalid,
+      ownerName: `${ownerData.ufirstname} ${ownerData.ulastname}`,
+      ownerGroup: ownerData.usergroup
     });
     
   } catch (err) {
