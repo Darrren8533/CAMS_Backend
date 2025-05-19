@@ -2589,6 +2589,7 @@ app.get('/cart', async (req, res) => {
   }
 });
 
+// Get property owner's PayPal ID
 app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   const propertyId = req.params.propertyId;
   
@@ -2600,9 +2601,9 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // FIXED: Get correct owner ID
+    // FIXED: Use correct column name 'userid' instead of 'owner_id'
     const ownerResult = await client.query(
-      `SELECT owner_id FROM properties WHERE propertyid = $1`,
+      `SELECT userid FROM properties WHERE propertyid = $1`,
       [propertyId]
     );
     
@@ -2610,9 +2611,9 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
     
-    const ownerId = ownerResult.rows[0].owner_id;
+    const ownerId = ownerResult.rows[0].userid;
     
-    // Get PayPal ID
+    // Get PayPal ID and user details
     const paypalResult = await client.query(
       `SELECT paypalid, ufirstname, ulastname, usergroup FROM users WHERE userid = $1`,
       [ownerId]
@@ -2624,9 +2625,9 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     
     const ownerData = paypalResult.rows[0];
     
+    // Check if owner has valid user group (case-insensitive)
     const userGroupLower = ownerData.usergroup.toLowerCase();
     
-    // FIXED: Compare lowercase values
     if (!['administrator', 'moderator'].includes(userGroupLower)) {
       return res.status(403).json({ error: 'Property not owned by a valid payment recipient' });
     }
