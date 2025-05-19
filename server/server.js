@@ -2601,7 +2601,6 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // FIXED: Use correct column name 'userid' instead of 'owner_id'
     const ownerResult = await client.query(
       `SELECT userid FROM properties WHERE propertyid = $1`,
       [propertyId]
@@ -2638,7 +2637,7 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     
     res.status(200).json({
       payPalId: ownerData.paypalid,
-      ownerName: `${ownerData.ufirstname} ${ownerData.ulastname}`,
+      ownerName: ownerData.username,
       ownerGroup: ownerData.usergroup
     });
     
