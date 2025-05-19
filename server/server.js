@@ -3353,8 +3353,8 @@ app.get('/reviews/:propertyid', async (req, res) => {
 });
 
 // Assign role to user
-app.post('/users/assignRole', async (req, res) => {
-  const { userid, role } = req.body;
+app.post('/users/assignRole/:userid/:role', async (req, res) => {
+  const { userid, role } = req.params;
   const { creatorid, creatorUsername } = req.query;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
@@ -3362,24 +3362,21 @@ app.post('/users/assignRole', async (req, res) => {
   try {
     client = await pool.connect();
     
-    // Validate that the role is one of the allowed values
     const validRoles = ['Customer', 'Moderator', 'Administrator'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ message: 'Invalid role', success: false });
     }
 
-    const query = {
-      text: `UPDATE users SET usergroup = $1 WHERE userid = $2`,
-      values: [role, userid]
-    };
-    
-    await client.query(query);
+    await client.query(
+      `UPDATE users SET usergroup = $1 WHERE userid = $2`,
+      [role, userid]
+    );
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
-          entityid, timestamp, entitytype, actiontype, action, userid, username
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userid, timestamp, "Users", "POST", "Assign User Role", creatorid, creatorUsername]
+         entityid, timestamp, entitytype, actiontype, action, userid, username
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userid, timestamp, 'Users', 'POST', 'Assign User Role', creatorid, creatorUsername]
     );
 
     res.status(200).json({ message: 'Role assigned successfully', success: true });
@@ -3387,9 +3384,7 @@ app.post('/users/assignRole', async (req, res) => {
     console.error('Error assigning role:', err);
     res.status(500).json({ message: 'Server error', success: false });
   } finally {
-    if (client) {
-      client.release();
-    }
+    if (client) client.release();
   }
 });
 
