@@ -849,8 +849,8 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
   const { usergroup } = req.query;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
   
-  if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: 'Please upload at least 5 property images.' });
+  if (!req.files || req.files.length < 4) {
+      return res.status(400).json({ error: 'Please upload at least 4 property images.' });
   }
   
   let client;
