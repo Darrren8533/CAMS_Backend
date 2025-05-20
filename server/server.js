@@ -1002,7 +1002,7 @@ app.get('/product', async (req, res) => {
       JOIN clusters cl ON p.clusterid = cl.clusterid
       JOIN users u ON p.userid = u.userid
       LEFT JOIN reservation res ON p.propertyid = res.propertyid
-      WHERE p.propertystatus = 'Available'
+      WHERE p.propertystatus IN ('Available', 'Unavailable')
     `;
     
     const result = await client.query(query);
