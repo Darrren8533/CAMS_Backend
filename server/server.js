@@ -3027,17 +3027,14 @@ app.get('/users/:userid', async (req, res) => {
 // Update user profile
 app.put('/users/updateProfile/:userid', async (req, res) => {
   const { userid } = req.params;
-  const { username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode } = req.body;
+  const { username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, paypalid } = req.body;
   const { creatorid, creatorUsername } = req.query;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
-
   try {
     client = await pool.connect();
-
     // Encrypt the password
     const encryptedPassword = encrypt(password);
-
     // Update user profile
     const query = `
       UPDATE users 
@@ -3052,25 +3049,22 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
         uemail = $8, 
         uphoneno = $9, 
         ucountry = $10, 
-        uzipcode = $11
-      WHERE userid = $12
+        uzipcode = $11,
+        paypalid = $12
+      WHERE userid = $13
       RETURNING userid;
     `;
-
-    const values = [username, encryptedPassword, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, userid];
+    const values = [username, encryptedPassword, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, paypalid, userid];
     const result = await client.query(query, values);
-
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found or no changes made.', success: false });
     }
-
     await client.query (
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [userid, timestamp, "Users", "PUT", "Update Profile", creatorid, creatorUsername]
     );
-
     res.status(200).json({ message: 'Profile updated successfully.', success: true });
 } catch (err) {
     console.error('Error updating user profile:', err);
