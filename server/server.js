@@ -3050,7 +3050,7 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
         uphoneno = $9, 
         ucountry = $10, 
         uzipcode = $11,
-        "payPalID" = $12
+        paypalid = $12
       WHERE userid = $13
       RETURNING userid;
     `;
@@ -3066,9 +3066,9 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
         [userid, timestamp, "Users", "PUT", "Update Profile", creatorid, creatorUsername]
     );
     res.status(200).json({ message: 'Profile updated successfully.', success: true });
-} catch (err) {
+  } catch (err) {
     console.error('Error updating user profile:', err);
-  res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
+    res.status(500).json({ message: 'An error occurred while updating the profile.', success: false });
   } finally {
     if (client) {
       client.release();
