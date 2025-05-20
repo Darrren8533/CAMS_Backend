@@ -3050,7 +3050,7 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
         uphoneno = $9, 
         ucountry = $10, 
         uzipcode = $11,
-        paypalid = $12
+        "payPalID" = $12
       WHERE userid = $13
       RETURNING userid;
     `;
