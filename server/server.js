@@ -2743,6 +2743,9 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
     const userResult = await client.query('SELECT username FROM users WHERE userid = $1', [userid]);
     const username = userResult.rows.length > 0 ? userResult.rows[0].username : userid;
 
+    console.log(userid);
+    console.log(username);
+
     await client.query(
       `INSERT INTO Book_and_Pay_Log 
        (logTime, log, userID)
