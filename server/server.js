@@ -1987,6 +1987,15 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
     }
 
     const selectedEmails = userResult.rows.map(record => record.uemail);
+    const emailString = selectedEmails.join(',');
+
+    const insertSuggestedEmails = await client.query(
+      `UPDATE reservation
+       SET suggestedemail = $1
+       WHERE reservationid = $2
+       `,
+       [emailString, reservationid]
+    );
 
     // Fetch reservation and customer details
     const reservationResult = await client.query(
