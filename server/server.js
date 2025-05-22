@@ -3438,10 +3438,10 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
   
       const userEmail = await pool.query(
         `
-        SELECT 
-          uemail
-        FROM users
-        WHERE userid = $1;
+          SELECT 
+            uemail
+          FROM users
+          WHERE userid = $1;
         `,
         [userid]
       );
@@ -3450,9 +3450,10 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
   
      const result = await client.query(
       `
-       SELECT *
-       FROM reservation
-       WHERE $1 = ANY (string_to_array(suggestedemail, ','))
+         SELECT *
+         FROM reservation
+         WHERE $1 = ANY (string_to_array(suggestedemail, ','))
+         AND reservationstatus = 'Suggested'
        `,
        [uemail]
      );
@@ -3466,11 +3467,6 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
       client.release();
     }
   }
-});
-
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
 });
 
 // GET all clusters
@@ -3593,4 +3589,9 @@ app.delete('/clusters/:id', async (req, res) => {
     console.error('Error deleting cluster:', error);
     res.status(500).json({ success: false, message: 'Failed to delete cluster' });
   }
+});
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
 });
