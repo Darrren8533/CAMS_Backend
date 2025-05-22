@@ -643,7 +643,7 @@ app.post('/users/createModerator', async (req, res) => {
 // Update users by user ID
 app.put('/users/updateUser/:userid', async (req, res) => {
   const { userid } = req.params;
-  const { firstName, lastName, username, email, phoneNo, country, zipCode, creatorid, creatorUsername } = req.body;
+  const { firstName, lastName, clusterid, username, email, phoneNo, country, zipCode, creatorid, creatorUsername } = req.body;
   
   let client;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
@@ -655,15 +655,16 @@ app.put('/users/updateUser/:userid', async (req, res) => {
       UPDATE users
       SET ufirstname = $1, 
           ulastname = $2, 
-          username = $3, 
-          uemail = $4,
-          uphoneno = $5,
-          ucountry = $6,
-          uzipcode = $7
+          clusterid = $3,
+          username = $4, 
+          uemail = $5,
+          uphoneno = $6,
+          ucountry = $7,
+          uzipcode = $8
       WHERE userid = $8
     `;
 
-    const updateValues = [firstName, lastName, username, email, phoneNo, country, zipCode, userid];
+    const updateValues = [firstName, lastName, clusterid, username, email, phoneNo, country, zipCode, userid];
 
     await client.query(updateQuery, updateValues);
 
