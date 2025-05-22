@@ -1059,7 +1059,7 @@ app.get('/propertiesListingTable', async (req, res) => {
     client = await pool.connect();
     
     const userResult = await client.query(
-      'SELECT userid, usergroup FROM users WHERE username = $1',
+      'SELECT userid, usergroup, clusterid FROM users WHERE username = $1',
       [username]
     );
 
@@ -1069,10 +1069,13 @@ app.get('/propertiesListingTable', async (req, res) => {
 
     const userid = userResult.rows[0].userid;
     const usergroup = userResult.rows[0].usergroup;
+    const userClusterid = userResult.rows[0].clusterid;
 
     let query;
+    let params = [];
 
     if (usergroup === 'Moderator') {
+      // Moderator can only see their own properties
       query = `
         SELECT 
           p.propertyid, 
@@ -1098,7 +1101,37 @@ app.get('/propertiesListingTable', async (req, res) => {
         JOIN categories c ON p.categoryid = c.categoryid
         WHERE p.userid = $1
       `;
+      params = [userid];
+    } else if (usergroup === 'Administrator' && userClusterid) {
+      // Administrator can only see properties in their own cluster
+      query = `
+        SELECT 
+          p.propertyid, 
+          p.propertyaddress, 
+          p.nearbylocation,
+          p.propertybedtype, 
+          p.propertyguestpaxno, 
+          p.propertydescription, 
+          p.propertystatus, 
+          p.propertyimage,
+          p.facilities,
+          u.ufirstname, 
+          u.ulastname,
+          u.username,
+          u.usergroup,
+          r.normalrate,
+          cl.clustername,
+          c.categoryname
+        FROM properties p
+        JOIN users u ON p.userid = u.userid
+        JOIN rate r ON p.rateid = r.rateid
+        JOIN clusters cl ON p.clusterid = cl.clusterid
+        JOIN categories c ON p.categoryid = c.categoryid
+        WHERE p.clusterid = $1
+      `;
+      params = [userClusterid];
     } else {
+      // Other user types or Administrator without cluster can see all properties
       query = `
         SELECT 
           p.propertyid, 
@@ -1125,7 +1158,6 @@ app.get('/propertiesListingTable', async (req, res) => {
       `; 
     }
 
-    const params = usergroup === 'Moderator' ? [userid] : [];
     const result = await client.query(query, params);
 
     const properties = result.rows.map(property => ({
