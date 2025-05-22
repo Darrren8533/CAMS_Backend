@@ -3476,3 +3476,125 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
+
+// GET all clusters
+app.get('/clusters', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM clusters ORDER BY clustername');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching clusters:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch clusters' });
+  }
+});
+
+// GET unique cluster states
+app.get('/clusters/states', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT DISTINCT clusterstate FROM clusters ORDER BY clusterstate');
+    res.json(result.rows.map(row => row.clusterstate));
+  } catch (error) {
+    console.error('Error fetching cluster states:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch cluster states' });
+  }
+});
+
+// POST create a new cluster
+app.post('/clusters', async (req, res) => {
+  const { clusterName, clusterState, clusterProvince } = req.body;
+  
+  if (!clusterName || !clusterState || !clusterProvince) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Cluster name, state, and province are required' 
+    });
+  }
+  
+  try {
+    const result = await pool.query(
+      `INSERT INTO clusters (clustername, clusterstate, clusterprovince, timestamp) 
+       VALUES ($1, $2, $3, NOW()) 
+       RETURNING *`,
+      [clusterName, clusterState, clusterProvince]
+    );
+    
+    res.json({ 
+      success: true, 
+      message: 'Cluster created successfully', 
+      cluster: result.rows[0] 
+    });
+  } catch (error) {
+    console.error('Error creating cluster:', error);
+    res.status(500).json({ success: false, message: 'Failed to create cluster' });
+  }
+});
+
+// PUT update a cluster
+app.put('/clusters/:id', async (req, res) => {
+  const { id } = req.params;
+  const { clusterName, clusterState, clusterProvince } = req.body;
+  
+  if (!clusterName || !clusterState || !clusterProvince) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Cluster name, state, and province are required' 
+    });
+  }
+  
+  try {
+    const result = await pool.query(
+      `UPDATE clusters 
+       SET clustername = $1, clusterstate = $2, clusterprovince = $3 
+       WHERE clusterid = $4 
+       RETURNING *`,
+      [clusterName, clusterState, clusterProvince, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Cluster not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Cluster updated successfully', 
+      cluster: result.rows[0] 
+    });
+  } catch (error) {
+    console.error('Error updating cluster:', error);
+    res.status(500).json({ success: false, message: 'Failed to update cluster' });
+  }
+});
+
+// DELETE a cluster
+app.delete('/clusters/:id', async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Check if there are any properties associated with this cluster
+    const propertyCheck = await pool.query(
+      'SELECT COUNT(*) FROM properties WHERE clusterid = $1',
+      [id]
+    );
+    
+    if (parseInt(propertyCheck.rows[0].count) > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete cluster because it has associated properties'
+      });
+    }
+    
+    const result = await pool.query(
+      'DELETE FROM clusters WHERE clusterid = $1 RETURNING *',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Cluster not found' });
+    }
+    
+    res.json({ success: true, message: 'Cluster deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting cluster:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete cluster' });
+  }
+});
