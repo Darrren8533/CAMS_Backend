@@ -1643,6 +1643,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
   const { propertyid, reservationid } = req.params;
   const { creatorid, creatorUsername } = req.query;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  let client;
 
   try {
     // Fetch property details for suggestion
