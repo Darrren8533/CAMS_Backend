@@ -3499,17 +3499,6 @@ app.get('/clusters/names', async (req, res) => {
   }
 });
 
-// GET unique cluster states
-app.get('/clusters/states', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT DISTINCT clusterstate FROM clusters ORDER BY clusterstate');
-    res.json(result.rows.map(row => row.clusterstate));
-  } catch (error) {
-    console.error('Error fetching cluster states:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch cluster states' });
-  }
-});
-
 // POST create a new cluster
 app.post('/clusters', async (req, res) => {
   const { clusterName, clusterState, clusterProvince } = req.body;
