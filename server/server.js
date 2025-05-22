@@ -3431,6 +3431,47 @@ app.get("/auditTrails", async (req, res) => {
   }
 });
 
+// Fetch Suggested Reservation
+app.get('/suggestedReservations/:userid', async (req, res) => {
+  const { userid } = req.params;
+  
+  let client;
+  
+  try {
+      client = await pool.connect();
+  
+      const userEmail = await pool.query(
+        `
+        SELECT 
+          uemail
+        FROM users
+        WHERE userid = $1;
+        `,
+        [userid]
+      );
+  
+     const uemail = userEmail.rows[0].uemail;
+  
+     const result = await client.query(
+      `
+       SELECT *
+       FROM reservation
+       WHERE $1 = ANY (string_to_array(suggestedemail, ','))
+       `,
+       [uemail]
+     );
+      
+     res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching suggested reservations:', err);
+    res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
