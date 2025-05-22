@@ -279,7 +279,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
 //Logout
 app.post('/logout', async (req, res) => {
   const { userid } = req.body;
@@ -436,9 +435,7 @@ app.post("/google-login", async (req, res) => {
                     const insertResult = await client.query(insertQuery, insertValues);
                     
                     const newuserid = insertResult.rows[0].userid;
-                    console.log("New user created with ID:", newuserid);
                     
-                    // Add audit trail for new user
                     try {
                         await client.query(
                             `INSERT INTO audit_trail (
@@ -451,7 +448,6 @@ app.post("/google-login", async (req, res) => {
                         );
                     } catch (auditError) {
                         console.error("Error logging registration audit trail:", auditError);
-                        // Continue even if audit trail fails
                     }
                     
                     return res.status(201).json({
@@ -483,7 +479,6 @@ app.post("/google-login", async (req, res) => {
         });
     }
 });
-
 
 //Fetch list of customers
 app.get('/users/customers', async (req, res) => {
@@ -833,6 +828,7 @@ app.put('/users/activateUser/:userid', async (req, res) => {
   }
 });
 
+// Properties Listing
 app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, res) => {
   const {
       username,
@@ -1315,6 +1311,7 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
   }
 });
 
+// Remove Properties Listing
 app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
     const { propertyid } = req.params;
     const { creatorid, creatorUsername } = req.query;
@@ -2729,7 +2726,8 @@ app.get('/reservationTable', async (req, res) => {
 // Update reservation status
 app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
-  const { reservationStatus, userid } = req.body;
+  const { reservationStatus } = req.body;
+  const { userid } = req.query;
   let client;
 
   try {
@@ -2741,10 +2739,7 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
     );
 
     const userResult = await client.query('SELECT username FROM users WHERE userid = $1', [userid]);
-    const username = userResult.rows.length > 0 ? userResult.rows[0].username : userid;
-
-    console.log(userid);
-    console.log(username);
+    const username = userResult.rows[0].username;
 
     await client.query(
       `INSERT INTO Book_and_Pay_Log 
