@@ -3526,7 +3526,7 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
          SELECT *
          FROM reservation
          WHERE $1 = ANY (string_to_array(suggestedemail, ','))
-         AND reservationstatus = 'Published'
+         AND reservationstatus = 'Suggested'
        `,
        [uemail]
      );
@@ -3534,6 +3534,48 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
      res.json(result.rows);
   } catch (err) {
     console.error('Error fetching suggested reservations:', err);
+    res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
+// Fetch Published Reservation
+app.get('/publishedReservations/:userid', async (req, res) => {
+  const { userid } = req.params;
+  
+  let client;
+  
+  try {
+      client = await pool.connect();
+  
+      const userEmail = await pool.query(
+        `
+          SELECT 
+            uemail
+          FROM users
+          WHERE userid = $1;
+        `,
+        [userid]
+      );
+  
+     const uemail = userEmail.rows[0].uemail;
+  
+     const result = await client.query(
+      `
+         SELECT *
+         FROM reservation
+         WHERE $1 = ANY (string_to_array(suggestedemail, ','))
+         AND reservationstatus = 'Published'
+       `,
+       [uemail]
+     );
+      
+     res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching published reservations:', err);
     res.status(500).json({ message: 'Server error', success: false });
   } finally {
     if (client) {
