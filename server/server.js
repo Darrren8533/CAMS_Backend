@@ -3526,7 +3526,7 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
          SELECT *
          FROM reservation
          WHERE $1 = ANY (string_to_array(suggestedemail, ','))
-         AND reservationstatus = 'Suggested'
+         AND reservationstatus = 'Published'
        `,
        [uemail]
      );
