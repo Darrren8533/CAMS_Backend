@@ -3488,6 +3488,17 @@ app.get('/clusters', async (req, res) => {
   }
 });
 
+// GET unique cluster names
+app.get('/clusters/names', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT DISTINCT clustername FROM clusters ORDER BY clustername');
+    res.json(result.rows.map(row => row.clustername));
+  } catch (error) {
+    console.error('Error fetching cluster names:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch cluster names' });
+  }
+});
+
 // GET unique cluster states
 app.get('/clusters/states', async (req, res) => {
   try {
