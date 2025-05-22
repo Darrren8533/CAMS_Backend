@@ -556,7 +556,7 @@ app.get('/users/operators', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, username, uimage,  ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ustatus, ugender, ucountry, uzipcode, utitle
+      SELECT userid, clusterid, username, uimage,  ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ustatus, ugender, ucountry, uzipcode, utitle
       FROM users
       WHERE usergroup IN ('Moderator', 'Administrator')
     `);
