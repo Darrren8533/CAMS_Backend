@@ -2704,6 +2704,7 @@ app.get('/reservationTable', async (req, res) => {
     }
 
     let client;
+  
     try {
         client = await pool.connect();
 
@@ -2821,10 +2822,13 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { creatorid, creatorUsername } = req.query;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  let client;
 
   try {
+    client = await pool.connect();
+    
     // Delete reservation from the Reservation table
-    const result = await pool.query(
+    const result = await client.query(
       `DELETE FROM reservation WHERE reservationid = $1`, 
       [reservationid]
     );
@@ -2863,15 +2867,38 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
 // Get Properties Of Particular Administrator For "Suggest"
 app.get('/operatorProperties/:userid', async (req, res) => {
   const { userid } = req.params;
+  const { reservationid } = req.body;
+  let client;
 
   if (!userid) {
     return res.status(400).json({ message: 'User ID of Operator is not found' });
   }
 
   try {
-    const result = await pool.query(
-      `SELECT * FROM property WHERE userid = $1 AND propertystatus = 'Available'`, 
-      [userid]
+    client = await pool.connect();
+
+    const reservationResults = await client.query(
+      `SELECT *
+       FROM reservation 
+       WHERE reservationid = $1
+      `,
+      [reservationid]
+    );
+
+    const reservationstartdate = reservationResults.rows[0].checkindatetime;
+    
+    const result = await client.query(
+      `SELECT p.* 
+       FROM properties p
+       WHERE p.userid = $1
+         AND p.propertystatus = 'Available'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM reservation r
+           WHERE r.propertyid = p.propertyid
+             AND $2 BETWEEN r.checkindatetime AND r.checkoutdatetime
+         )`,
+      [userid, reservationstartdate]
     );
 
     if (result.rows.length === 0) {
