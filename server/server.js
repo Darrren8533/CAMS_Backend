@@ -1528,8 +1528,7 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
       <p><b>Total Price: <i>RM${reservationtotalprice}</i></b></p><br/>
       <p><b>Please kindly click the button below to make the decision in <b>12 hours</b> time frame.</b></p>
       <div style="margin: 10px 0;">
-        <a href="" style="background-color: green; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Accept</a>
-        <a href="" style="background-color: red; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reject</a>
+        <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
       </div>
       `,
     };
@@ -1612,8 +1611,10 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
       html: `
         <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
         <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: green">accepted</span>.</p> 
-        <p>Please kindly click the button below to make payment before <b>${paymentDueDate}</b> to secure your booking.</p>  
-        <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pay</a>
+        <p>Please kindly click the button below to make payment before <b>${paymentDueDate}</b> to secure your booking.</p>
+        <div style="margin: 10px 0;">
+          <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
+        </div>
       `,
     };
 
@@ -1715,10 +1716,9 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
       <p><b>Bed Type:</b> ${property.suggestPropertyBedType}</p>
       <p><b>Pax Number:</b> ${property.suggestPropertyGuestPaxNo}</p>
       <p><b>Price: <i>RM${property.suggestPropertyPrice}</i></b></p><br/>
-      <p>Please kindly make your decision by clicking the buttons below</p>
+      <p>Please kindly make your decision by clicking the buttons below to login</p>
       <div style="margin: 10px 0;">
-        <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pay</a>
-        <a href="" style="background-color: red; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reject</a>
+        <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
       </div>
       `,
     };
@@ -1806,8 +1806,7 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
       <p>Moderator ${moderatorTitle} ${moderatorLastName} would like to request listing a new property with the name of <b>${property}</b> into the "Hello Sarawak" app.</p>
       <p>Please kindly click the button below to view more details and make the decision in <b>12 hours</b> time frame.</p>
       <div style="margin: 10px 0;">
-        <a href="" style="background-color: green; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Accept</a>
-        <a href="" style="background-color: red; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reject</a>
+        <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
       </div>
       `,
     };
@@ -1872,7 +1871,9 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
       <h1><b>Dear ${moderatorTitle} ${moderatorLastName},</b></h1><hr/>
       <p>Your request for property listing of property named <b>${property}</b> has been <span style="color: green">accepted</span> by the Administrator.</p>
       <p>Please kindly click the button below to check the details of the listed property.</p>
-      <a href="" style="background-color: brown; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Hello Sarawak</a>
+      <div style="margin: 10px 0;">
+        <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
+      </div>
       `,
     };
 
@@ -1937,7 +1938,9 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
       <h1><b>Dear ${moderatorTitle} ${moderatorLastName},</b></h1><hr/>
       <p>Your request for property listing of property named <b>${property}</b> has been <span style="color: red">rejected</span> by the Administrator due to violation of policy.</p>
       <p>Please kindly click the button below to list the property again with appropriate information in <b>12 hours</b> time frame.</p>
-      <a href="" style="background-color: brown; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Hello Sarawak</a>
+      <div style="margin: 10px 0;">
+        <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
+      </div>
       `,
     };
 
@@ -2044,9 +2047,11 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
       <p><b>Check In Date:</b> ${reservationCheckInDate}</p>
       <p><b>Check Out Date:</b> ${reservationCheckOutDate}</p>
       <br/>
-        <p>Please kindly click the button below to pick up the "Suggest" opportunity on a first-come, first-served basis.</p>
-        <p>You may <b>ignore</b> this message if <b>not interested</b>.</p>
-      <a href="" style="background-color: blue; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Pick Up</a>
+      <p>Please kindly click the button below to pick up the "Suggest" opportunity on a first-come, first-served basis.</p>
+      <p>You may <b>ignore</b> this message if <b>not interested</b>.</p>
+      <div style="margin: 10px 0;">
+        <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
+      </div>
       `,
     };
 
