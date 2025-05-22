@@ -2865,9 +2865,8 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
 });
 
 // Get Properties Of Particular Administrator For "Suggest"
-app.get('/operatorProperties/:userid', async (req, res) => {
-  const { userid } = req.params;
-  const { reservationid } = req.body;
+app.get('/operatorProperties/:userid/:reservationid', async (req, res) => {
+  const { userid, reservationid } = req.params;
   let client;
 
   if (!userid) {
