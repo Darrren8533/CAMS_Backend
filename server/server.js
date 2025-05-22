@@ -530,7 +530,7 @@ app.get('/users/moderators', async (req, res) => {
 
     // Query to fetch moderators
     const result = await client.query(`
-      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
+      SELECT userid, clusterid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
       FROM users
       WHERE usergroup = 'Moderator'
     `);
