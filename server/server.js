@@ -2727,27 +2727,21 @@ app.get('/reservationTable', async (req, res) => {
 // Update reservation status
 app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
-  const { reservationStatus, userid } = req.body;
+  const { reservationStatus } = req.body;
+  const { userid } = req.query;
   let client;
+
   try {
     client = await pool.connect();
-    
-    // Start transaction
-    await client.query('BEGIN');
     
     const result = await client.query(
       'UPDATE reservation SET reservationstatus = $1 WHERE reservationid = $2 RETURNING *',
       [reservationStatus, reservationid]
     );
-    
-    if (result.rowCount === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ message: 'Reservation not found' });
-    }
 
     const userResult = await client.query('SELECT username FROM users WHERE userid = $1', [userid]);
-    const username = userResult.rows.length > 0 ? userResult.rows[0].username : `User-${userid}`;
-    
+    const username = userResult.rows[0].username;
+
     await client.query(
       `INSERT INTO Book_and_Pay_Log 
        (logTime, log, userID)
@@ -2758,14 +2752,15 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
         userid
       ]
     );
-    
-    // Commit transaction
+
     await client.query('COMMIT');
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'error' });
+    }
+
     res.status(200).json({ message: 'success' });
   } catch (error) {
-    if (client) {
-      await client.query('ROLLBACK');
-    }
     console.error('error:', error);
     res.status(500).json({ message: 'server error' });
   } finally {
