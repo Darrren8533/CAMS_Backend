@@ -1499,7 +1499,7 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
     const { 
       rclastname: customerLastName, 
       rctitle: customerTitle, 
-      propertyidcheckindatetime: reservationpropertyidcheckindatetime, 
+      checkindatetime: reservationcheckindatetime, 
       checkoutdatetime: reservationcheckoutdatetime, 
       request: reservationRequest = '-', 
       totalprice: reservationtotalprice, 
@@ -1521,7 +1521,7 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
       subject: 'Booking Request',
       html: `
       <h1><b>Do You Accept This Booking By ${customerTitle} ${customerLastName}?</b></h1><hr/>
-      <p><b>Check In Date:</b> ${reservationpropertyidcheckindatetime}</p>
+      <p><b>Check In Date:</b> ${reservationcheckindatetime}</p>
       <p><b>Check Out Date:</b> ${reservationcheckoutdatetime}</p>
       <p><b>Request:</b> ${reservationRequest}</p>
       <p><b>Property Name:</b> ${reservationProperty}</p>
@@ -1673,7 +1673,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
               rc.rcemail AS "customerEmail",
               rc.rctitle AS "customerTitle",
               p.propertyaddress AS "reservationProperty",
-              r.propertyidcheckindatetime AS "reservationCheckInDate",
+              r.checkindatetime AS "reservationCheckInDate",
               r.checkoutdatetime AS "reservationCheckOutDate"
        FROM reservation r
        JOIN properties p ON p.propertyid = r.propertyid
@@ -2005,7 +2005,7 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
     const reservationResult = await client.query(
       `SELECT 
         p.propertyaddress AS "reservationProperty", 
-        r.propertyidcheckindatetime AS "reservationCheckInDate", 
+        r.checkindatetime AS "reservationCheckInDate", 
         r.checkoutdatetime AS "reservationCheckOutDate", 
         rc.rclastname AS "customerLastName", 
         rc.rctitle AS "customerTitle"
