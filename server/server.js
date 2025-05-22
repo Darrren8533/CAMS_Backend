@@ -661,7 +661,7 @@ app.put('/users/updateUser/:userid', async (req, res) => {
           uphoneno = $6,
           ucountry = $7,
           uzipcode = $8
-      WHERE userid = $8
+      WHERE userid = $9
     `;
 
     const updateValues = [firstName, lastName, clusterid, username, email, phoneNo, country, zipCode, userid];
