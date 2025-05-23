@@ -1208,7 +1208,8 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
     const {
         propertyAddress, propertyPrice, propertyDescription, nearbyLocation,
         propertyBedType, propertyGuestPaxNo, clusterName, categoryName, facilities,
-        username 
+        username, weekendRate, specialEventRate, specialEventStartDate, specialEventEndDate,
+        earlyBirdDiscountRate, lastMinuteDiscountRate
     } = req.body;
     const { creatorid, creatorUsername } = req.query;
     const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
