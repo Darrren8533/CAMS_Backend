@@ -841,7 +841,13 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       propertyGuestPaxNo,
       propertyDescription,
       nearbyLocation,
-      facilities
+      facilities,
+      weekendRate,
+      specialEventRate,
+      specialEventStartDate,
+      specialEventEndDate,
+      earlyBirdDiscountRate,
+      lastMinuteDiscountRate
   } = req.body;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
   
@@ -896,10 +902,30 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       
       // Insert rate
       const rateResult = await client.query(
-          `INSERT INTO rate (normalrate, userid)
-           VALUES ($1, $2)
-           RETURNING rateid`,
-          [propertyPrice, userid]
+          `INSERT INTO rate (
+              normalrate, 
+              weekendrate,
+              specialeventrate,
+              earlybirddiscountrate,
+              lastminutediscountrate,
+              startdate,
+              enddate,
+              userid,
+              timestamp
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          RETURNING rateid`,
+          [
+              propertyPrice,
+              weekendRate || null,
+              specialEventRate || null,
+              earlyBirdDiscountRate || null,
+              lastMinuteDiscountRate || null,
+              specialEventStartDate || null,
+              specialEventEndDate || null,
+              userid,
+              timestamp
+          ]
       );
     
       const rateID = rateResult.rows[0].rateid;
