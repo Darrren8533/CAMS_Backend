@@ -917,12 +917,12 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           RETURNING rateid`,
           [
               propertyPrice,
-              weekendRate || null,
-              specialEventRate || null,
-              earlyBirdDiscountRate || null,
-              lastMinuteDiscountRate || null,
-              specialEventStartDate || null,
-              specialEventEndDate || null,
+              weekendRate,
+              specialEventRate,
+              earlyBirdDiscountRate,
+              lastMinuteDiscountRate,
+              specialEventStartDate,
+              specialEventEndDate,
               userid,
               timestamp
           ]
