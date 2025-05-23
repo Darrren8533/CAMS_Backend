@@ -1,4 +1,3 @@
-
 const express = require('express');
 const sql = require('mssql');
 const cors = require('cors');
@@ -843,7 +842,12 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       propertyDescription,
       nearbyLocation,
       facilities,
-      weekendRate
+      weekendRate,
+      specialEventRate,
+      specialEventStartDate,
+      specialEventEndDate,
+      earlyBirdDiscountRate,
+      lastMinuteDiscountRate
   } = req.body;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
   
@@ -898,10 +902,30 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       
       // Insert rate
       const rateResult = await client.query(
-          `INSERT INTO rate (normalrate, weekendrate, userid)
-           VALUES ($1, $2, $3)
-           RETURNING rateid`,
-          [propertyPrice, weekendRate, userid]
+          `INSERT INTO rate (
+              normalrate, 
+              weekendrate,
+              specialeventrate,
+              earlybirddiscountrate,
+              lastminutediscountrate,
+              startdate,
+              enddate,
+              userid,
+              timestamp
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          RETURNING rateid`,
+          [
+              propertyPrice,
+              weekendRate,
+              specialEventRate,
+              earlyBirdDiscountRate,
+              lastMinuteDiscountRate,
+              specialEventStartDate,
+              specialEventEndDate,
+              userid,
+              timestamp
+          ]
       );
     
       const rateID = rateResult.rows[0].rateid;
@@ -993,7 +1017,7 @@ app.get('/product', async (req, res) => {
     client = await pool.connect();
     
     const query = `
-      SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.normalrate, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
+      SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.*, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationstatus
       FROM properties p
       JOIN rate r ON p.rateid = r.rateid
       JOIN categories c ON p.categoryid = c.categoryid
@@ -1093,7 +1117,7 @@ app.get('/propertiesListingTable', async (req, res) => {
           u.ulastname,
           u.username,
           u.usergroup,
-          r.normalrate,
+          r.*,
           cl.clustername,
           c.categoryname
         FROM properties p
@@ -1121,7 +1145,7 @@ app.get('/propertiesListingTable', async (req, res) => {
           u.ulastname,
           u.username,
           u.usergroup,
-          r.normalrate,
+          r.*,
           cl.clustername,
           c.categoryname
         FROM properties p
@@ -1149,7 +1173,7 @@ app.get('/propertiesListingTable', async (req, res) => {
           u.ulastname,
           u.username,
           u.usergroup,
-          r.normalrate,
+          r.*,
           cl.clustername,
           c.categoryname
         FROM properties p
@@ -1266,9 +1290,24 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
 
         await client.query(
             `UPDATE rate 
-             SET normalrate = $1 
-             WHERE rateid = $2`,
-            [propertyPrice, propertyResult.rows[0].rateid]
+             SET normalrate = $1,
+                 weekendrate = $2,
+                 specialeventrate = $3,
+                 earlybirddiscountrate = $4,
+                 lastminutediscountrate = $5,
+                 startdate = $6,
+                 enddate = $7
+             WHERE rateid = $8`,
+            [
+                propertyPrice,
+                weekendRate,
+                specialEventRate,
+                earlyBirdDiscountRate,
+                lastMinuteDiscountRate,
+                specialEventStartDate,
+                specialEventEndDate,
+                propertyResult.rows[0].rateid
+            ]
         );
 
         await client.query(
