@@ -2317,6 +2317,7 @@ app.post('/reservation/:userid', async (req, res) => {
     );
 
     const rcid = customerResult.rows[0].rcid;
+    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
     const checkIn = new Date(checkindatetime);
     const reservationblocktime = new Date(checkIn - 3 * 60 * 60 * 1000);
 
