@@ -2201,18 +2201,40 @@ app.post('/reservation/:userid', async (req, res) => {
 
 // Fetch Book and Pay Log
 app.get('/users/booklog', async (req, res) => {
+  const { userid } = req.query;
+
+  if (!userid) {
+    return res.status(400).json({ message: "Missing userid parameter" });
+  }
+
   let client;
 
   try {
     client = await pool.connect();
+    
+    // First get the user's cluster ID
+    const userClusterResult = await client.query(
+      `SELECT clusterid FROM users WHERE userid = $1`,
+      [userid]
+    );
+
+    if (userClusterResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const userClusterid = userClusterResult.rows[0].clusterid;
+
+    // Get book and pay logs for users in the same cluster
     const result = await client.query(`
       SELECT 
           b.userid, 
           b.logtime AS timestamp, 
           b.log AS action
       FROM book_and_pay_log b
+      JOIN users u ON b.userid = u.userid
+      WHERE u.clusterid = $1
       ORDER BY b.logtime DESC;
-    `);
+    `, [userClusterid]);
 
     // Format timestamps to remove T and milliseconds with Z
     const formattedRows = result.rows.map(row => {
@@ -2229,6 +2251,10 @@ app.get('/users/booklog', async (req, res) => {
   } catch (err) {
     console.error('Error fetching Book Log:', err);
     res.status(500).json({ message: 'Internal Server Error', details: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
