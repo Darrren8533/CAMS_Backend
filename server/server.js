@@ -2851,7 +2851,7 @@ app.get('/cart', async (req, res) => {
         r.checkindatetime,
         r.checkoutdatetime,
         r.reservationblocktime,
-          r.request,
+        r.request,
         r.totalprice,
         r.reservationstatus,
         r.rcid,
