@@ -3053,15 +3053,16 @@ app.get('/operatorProperties/:userid/:reservationid', async (req, res) => {
     const reservationstartdate = reservationResults.rows[0].checkindatetime;
     
     const result = await client.query(
-      `SELECT p.* 
+      `SELECT p.*, r.normalrate, r.weekendrate, r.specialeventrate, r.earlybirddiscountrate, r.lastminutediscountrate
        FROM properties p
+       JOIN rate r ON p.rateid = r.rateid
        WHERE p.userid = $1
          AND p.propertystatus = 'Available'
          AND NOT EXISTS (
            SELECT 1
-           FROM reservation r
-           WHERE r.propertyid = p.propertyid
-             AND $2 BETWEEN r.checkindatetime AND r.checkoutdatetime
+           FROM reservation res
+           WHERE res.propertyid = p.propertyid
+             AND $2 BETWEEN res.checkindatetime AND res.checkoutdatetime
          )`,
       [userid, reservationstartdate]
     );
