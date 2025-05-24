@@ -2115,6 +2115,103 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
   }
 });
 
+// Send Reservation Picked Up Notification To Original Reservation Owner
+app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
+  const { reservationid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  let client;
+
+  if (!userids || userids.length === 0) {
+    return res.status(400).json({ message: 'User IDs are required' });
+  }
+
+  try {
+    client = await pool.connect();
+    
+    // Fetch user emails
+    const reservationOwnerResult = await client.query(
+      `SELECT u.username, u.uemail, utitle 
+       FROM u.users 
+       JOIN p.properties ON u.userid = p.userid
+       JOIN r.reservation ON p.propertyid = r.propertyid
+       WHERE reservationid = $1
+       `,
+      [reservationid]
+    );
+
+    if (reservationOwnerResult.rows.length === 0) {
+      return res.status(404).json({ message: 'No uEmail found' });
+    }
+
+    const { reservationOwnerUsername, reservationOwnerEmail, reservationOwnerTitle } = reservationOwnerResult.rows[0];
+
+    // Fetch reservation and customer details
+    const reservationResult = await client.query(
+      `SELECT 
+        p.propertyaddress AS "reservationProperty", 
+        r.checkindatetime AS "reservationCheckInDate", 
+        r.checkoutdatetime AS "reservationCheckOutDate", 
+        rc.rclastname AS "customerLastName", 
+        rc.rctitle AS "customerTitle"
+      FROM properties p
+      JOIN reservation r ON p.propertyid = r.propertyid
+      JOIN reservation_customer_details rc ON rc.rcID = r.rcID
+      WHERE r.reservationid = $1`,
+      [reservationid]
+    );
+
+    if (reservationResult.rows.length === 0) {
+      return res.status(404).json({ message: 'No reservation or customer found' });
+    }
+
+    const { 
+      reservationProperty, 
+      reservationCheckInDate, 
+      reservationCheckOutDate, 
+      customerLastName, 
+      customerTitle 
+    } = reservationResult.rows[0];
+
+    // Email configuration
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: reservationOwnerEmail,
+      subject: `Reservation Picked Up`,
+      html: `
+      <h1><b>Dear ${reservationOwnerTitle}${reservationOwnerUsername},</b></h1><hr/>
+      <p>Reservation of customer <b>${customerTitle} ${customerLastName}</b> with the following details is picked up by <b>${creatorUsername}<b/>:</p>
+      <p><b>Property Name:</b> ${reservationProperty}</p>
+      <p><b>Check In Date:</b> ${reservationCheckInDate}</p>
+      <p><b>Check Out Date:</b> ${reservationCheckOutDate}</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reservationid, timestamp, "Reservation", "POST", "Reservation Picked Up", creatorid, creatorUsername]
+    );
+    
+    res.status(200).json({ message: 'Email Sent Successfully' });
+
+  } catch (err) {
+    console.error('Error sending email: ', err);
+    res.status(500).json({ message: 'Failed to send email', error: err.message });
+  }
+});
+
 //Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
