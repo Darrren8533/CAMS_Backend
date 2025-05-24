@@ -2392,41 +2392,73 @@ app.get('/users/booklog', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
-    // First get the user's cluster ID
-    const userClusterResult = await client.query(
-      `SELECT clusterid FROM users WHERE userid = $1`,
+
+    const ownerResult = await client.query(
+      `SELECT usergroup
+       FROM users
+       WHERE userid = $1
+       `,
       [userid]
     );
 
-    if (userClusterResult.rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const usergroup = ownerResult.rows[0].usergroup;
 
-    const userClusterid = userClusterResult.rows[0].clusterid;
+    let result;
+    let formattedRows;
 
-    // Get book and pay logs for users in the same cluster
-    const result = await client.query(`
-      SELECT 
-          b.userid, 
-          b.logtime AS timestamp, 
-          b.log AS action
-      FROM book_and_pay_log b
-      JOIN users u ON b.userid = u.userid
-      WHERE u.clusterid = $1
-      ORDER BY b.logtime DESC;
-    `, [userClusterid]);
-
-    // Format timestamps to remove T and milliseconds with Z
-    const formattedRows = result.rows.map(row => {
-      if (row.timestamp) {
-        const date = new Date(row.timestamp);
-        row.timestamp = date.toISOString().replace('T', ' ').split('.')[0];
+    if (usergroup === 'Owner') {
+      result = await client.query(`
+        SELECT 
+            b.userid, 
+            b.logtime AS timestamp, 
+            b.log AS action
+        FROM book_and_pay_log b
+        JOIN users u ON b.userid = u.userid
+        ORDER BY b.logtime DESC;
+      `,);
+  
+      // Format timestamps to remove T and milliseconds with Z
+      formattedRows = result.rows.map(row => {
+        if (row.timestamp) {
+          const date = new Date(row.timestamp);
+          row.timestamp = date.toISOString().replace('T', ' ').split('.')[0];
+        }
+        return row;
+      });
+    } else {
+      // First get the user's cluster ID
+      const userClusterResult = await client.query(
+        `SELECT clusterid FROM users WHERE userid = $1`,
+        [userid]
+      );
+  
+      if (userClusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
       }
-      return row;
-    });
-
-    console.log(formattedRows);
+  
+      const userClusterid = userClusterResult.rows[0].clusterid;
+  
+      // Get book and pay logs for users in the same cluster
+      result = await client.query(`
+        SELECT 
+            b.userid, 
+            b.logtime AS timestamp, 
+            b.log AS action
+        FROM book_and_pay_log b
+        JOIN users u ON b.userid = u.userid
+        WHERE u.clusterid = $1
+        ORDER BY b.logtime DESC;
+      `, [userClusterid]);
+  
+      // Format timestamps to remove T and milliseconds with Z
+      formattedRows = result.rows.map(row => {
+        if (row.timestamp) {
+          const date = new Date(row.timestamp);
+          row.timestamp = date.toISOString().replace('T', ' ').split('.')[0];
+        }
+        return row;
+      });
+    }
 
     res.json(formattedRows);
   } catch (err) {
@@ -3959,29 +3991,52 @@ app.get("/auditTrails", async (req, res) => {
   }
 
   try {
-    const clusterResult = await pool.query(
-      `SELECT DISTINCT clusterid, usergroup FROM users WHERE userid = $1`,
+    const ownerResult = await pool.query(
+      `SELECT usergroup
+       FROM users
+       WHERE userid = $1
+       `,
       [userid]
     );
 
-    if (clusterResult.rows.length === 0) {
-      return res.status(404).json({ message: "No cluster or usergroup found for this user" });
+    const usergroup = ownerResult.rows[0].usergroup;
+
+    let result;
+
+    if (usergroup === 'Owner') {
+      result = await pool.query(
+        `
+        SELECT 
+          a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid, a.username
+        FROM audit_trail a 
+        JOIN users u
+        ON a.userid = u.userid
+        `,
+      );
+    } else {
+      const clusterResult = await pool.query(
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
+        [userid]
+      );
+  
+      if (clusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "No cluster or usergroup found for this user" });
+      }
+  
+      const clusterids = clusterResult.rows.map((row) => row.clusterid);
+  
+      result = await pool.query(
+        `
+        SELECT 
+          a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid, a.username
+        FROM audit_trail a 
+        JOIN users u
+        ON a.userid = u.userid
+        WHERE u.clusterid = ANY($1);
+        `,
+        [clusterids]
+      );
     }
-
-    const usergroup = clusterResult.rows[0].usergroup;
-    const clusterids = clusterResult.rows.map((row) => row.clusterid);
-
-    const result = await pool.query(
-      `
-      SELECT 
-        a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid, a.username
-      FROM audit_trail a 
-      JOIN users u
-      ON a.userid = u.userid
-      WHERE u.clusterid = ANY($1);
-      `,
-      [clusterids]
-    );
 
     if (result.rows.length > 0) {
       console.log("Audit trails result:", result.rows);
