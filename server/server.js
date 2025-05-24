@@ -3775,6 +3775,28 @@ app.delete('/clusters/:id', async (req, res) => {
   }
 });
 
+// GET all categories
+app.get('/categories', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM categories ORDER BY categoryname');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch categories' });
+  }
+});
+
+// GET unique category names
+// app.get('/categories/names', async (req, res) => {
+//   try {
+//     const result = await pool.query('SELECT DISTINCT categoryname FROM categories ORDER BY categoryname');
+//     res.json(result.rows.map(row => row.categoryname));
+//   } catch (error) {
+//     console.error('Error fetching category names:', error);
+//     res.status(500).json({ success: false, message: 'Failed to fetch category names' });
+//   }
+// });
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
