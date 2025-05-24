@@ -2212,6 +2212,89 @@ app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
   }
 });
 
+// Send Suggested Room Rejected Message To Operators
+app.post('/reject_suggested_reservation/:propertyid/', async (req, res) => {
+  const { propertyid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  let client;
+
+  try {
+    // Fetch property details for suggestion
+    client = await pool.connect();
+    
+    const propertyResult = await client.query(
+      `SELECT p.propertyaddress AS "suggestPropertyAddress",
+              r.normalrate AS "suggestPropertyPrice",
+              p.nearbylocation AS "suggestPropertyLocation",
+              p.propertybedtype AS "suggestPropertyBedType",
+              p.propertyguestpaxno AS "suggestPropertyGuestPaxNo",
+              u.uemail AS "operatorEmail",
+              u.username AS "operatorUsername",
+              u.utitle AS "operatorTitle"
+       FROM properties p 
+       JOIN rate r ON p.rateid = r.rateid
+       JOIN users u ON p.userid = u.userid
+       WHERE p.propertyid = $1`,
+      [propertyid]
+    );
+
+    if (propertyResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Property not found' });
+    }
+
+    const property = propertyResult.rows[0];
+
+    // Email configuration
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: property.operatorEmail,
+      subject: 'Suggested Room Rejected',
+      html: `
+      <h1><b>Dear ${property.operatorTitle} ${property.operatorUsername},</b></h1><hr/>
+      <p>Your suggested room <b>${property.suggestPropertyAddress}</b> has been <span style="color: red">Rejected</span>.</p> 
+      <p>All Actions For This Reservation Will Be <b>Terminated</b></p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    // Add log record
+    await client.query(
+      `INSERT INTO book_and_pay_log 
+       (logtime, log, userid)
+       VALUES ($1, $2, $3)`,
+      [
+        timestamp,
+        `Rejected Suggested Room (${property.suggestpropertyAddress})`,
+        creatorid
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [propertyid, timestamp, "Properties", "POST", "Rejected Suggested Room", creatorid, creatorUsername]
+    );
+    
+    res.status(200).json({ message: 'Email Sent Successfully' });
+  } catch (err) {
+    console.error('Error sending email:', err);
+    res.status(500).json({ message: 'Failed to send email', error: err.message });
+  }
+});
+
 //Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
