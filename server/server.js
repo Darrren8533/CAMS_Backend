@@ -2213,7 +2213,7 @@ app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
 });
 
 // Send Suggested Room Rejected Message To Operators
-app.post('/reject_suggested_reservation/:propertyid/', async (req, res) => {
+app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
   const { propertyid } = req.params;
   const { creatorid, creatorUsername } = req.query;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
@@ -2295,7 +2295,7 @@ app.post('/reject_suggested_reservation/:propertyid/', async (req, res) => {
   }
 });
 
-//Create reservation for property
+// Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
