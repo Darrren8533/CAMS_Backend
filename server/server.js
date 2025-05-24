@@ -2456,8 +2456,10 @@ app.get("/users/finance", async (req, res) => {
 
     const usergroup = ownerResult.rows[0].usergroup;
 
+    let result;
+
     if (usergroup === 'Owner') {
-      const result = await pool.query(
+      result = await pool.query(
         `
         SELECT 
           TO_CHAR(checkindatetime, 'YYYY-MM') AS month,
@@ -2481,7 +2483,7 @@ app.get("/users/finance", async (req, res) => {
     
         const clusterids = clusterResult.rows.map(row => row.clusterid);
     
-        const result = await pool.query(
+        result = await pool.query(
           `
           SELECT 
             TO_CHAR(checkindatetime, 'YYYY-MM') AS month,
@@ -2532,8 +2534,10 @@ app.get("/users/occupancy_rate", async (req, res) => {
 
     const usergroup = ownerResult.rows[0].usergroup;
 
+    let result;
+
     if (usergroup === 'Owner') {
-      const result = await pool.query(`
+      result = await pool.query(`
         WITH monthly_data AS (
             SELECT 
                 TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
@@ -2583,7 +2587,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
   
       const clusterids = clusterResult.rows.map(row => row.clusterid);
   
-      const result = await pool.query(`
+      result = await pool.query(`
         WITH monthly_data AS (
             SELECT 
                 TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
@@ -2655,8 +2659,11 @@ app.get("/users/RevPAR", async (req, res) => {
 
     const usergroup = ownerResult.rows[0].usergroup;
 
+    let propertyCountResult;
+    let revparResult;
+
     if (usergroup === 'Owner') {
-      const propertyCountResult = await pool.query(
+      propertyCountResult = await pool.query(
         `SELECT COUNT(*) AS available_properties 
          FROM properties 
          WHERE propertystatus = 'Available' 
@@ -2670,7 +2677,7 @@ app.get("/users/RevPAR", async (req, res) => {
         return res.status(404).json({ message: "No available properties found" });
       }
   
-      const revparResult = await pool.query(
+      revparResult = await pool.query(
         `
         SELECT 
           TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
@@ -2701,7 +2708,7 @@ app.get("/users/RevPAR", async (req, res) => {
   
       const clusterids = clusterResult.rows.map(row => row.clusterid);
   
-      const propertyCountResult = await pool.query(
+      propertyCountResult = await pool.query(
         `SELECT COUNT(*) AS available_properties 
          FROM properties 
          WHERE propertystatus = 'Available' 
@@ -2716,7 +2723,7 @@ app.get("/users/RevPAR", async (req, res) => {
         return res.status(404).json({ message: "No available properties found" });
       }
   
-      const revparResult = await pool.query(
+      revparResult = await pool.query(
         `
         SELECT 
           TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
@@ -2769,8 +2776,10 @@ app.get("/users/cancellation_rate", async (req, res) => {
 
     const usergroup = ownerResult.rows[0].usergroup;
 
+    let cancellationRateResult;
+
     if (usergroup === 'Owner') {
-      const cancellationRateResult = await pool.query(
+      cancellationRateResult = await pool.query(
         `
         SELECT 
           TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
@@ -2797,7 +2806,7 @@ app.get("/users/cancellation_rate", async (req, res) => {
   
       const clusterids = clusterResult.rows.map(row => row.clusterid);
   
-      const cancellationRateResult = await pool.query(
+      cancellationRateResult = await pool.query(
         `
         SELECT 
           TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
@@ -2848,8 +2857,10 @@ app.get("/users/customer_retention_rate", async (req, res) => {
 
     const usergroup = ownerResult.rows[0].usergroup;
 
+    let result;
+
     if (usergroup === 'Owner') {
-      const result = await pool.query(
+      result = await pool.query(
         `
         WITH monthly_users AS (
           SELECT 
@@ -2881,7 +2892,7 @@ app.get("/users/customer_retention_rate", async (req, res) => {
   
       const clusterids = clusterResult.rows.map(row => row.clusterid);
   
-      const result = await pool.query(
+      result = await pool.query(
         `
         WITH monthly_users AS (
           SELECT 
@@ -2937,8 +2948,10 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
 
     const usergroup = ownerResult.rows[0].usergroup;
 
+    let result;
+
     if (usergroup === 'Owner') {
-      const result = await pool.query(
+      result = await pool.query(
         `
         SELECT 
           TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
@@ -2962,7 +2975,7 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
   
       const clusterids = clusterResult.rows.map(row => row.clusterid);
   
-      const result = await pool.query(
+      result = await pool.query(
         `
         SELECT 
           TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
@@ -3009,8 +3022,10 @@ app.get("/users/alos", async (req, res) => {
 
     const usergroup = ownerResult.rows[0].usergroup;
 
+    let result;
+
     if (usergroup === 'Owner') {
-      const result = await pool.query(
+      result = await pool.query(
         `
         SELECT 
           TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
@@ -3033,7 +3048,7 @@ app.get("/users/alos", async (req, res) => {
   
       const clusterids = clusterResult.rows.map((row) => row.clusterid);
   
-      const result = await pool.query(
+      result = await pool.query(
         `
         SELECT 
           TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
