@@ -2250,7 +2250,7 @@ app.post('/reservation/:userid', async (req, res) => {
         checkoutdatetime,
         reservationblocktime,
         request,
-        totalprice,
+        parseFloat(parseFloat(totalprice).toFixed(2)),
         rcid,
         'Pending',
         userid
