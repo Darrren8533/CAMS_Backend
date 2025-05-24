@@ -2699,9 +2699,7 @@ app.get("/users/RevPAR", async (req, res) => {
       propertyCountResult = await pool.query(
         `SELECT COUNT(*) AS available_properties 
          FROM properties 
-         WHERE propertystatus = 'Available' 
-           AND userid = $1;`,
-        [userid]
+         WHERE propertystatus = 'Available';`,
       );
 
       const availableProperties = parseInt(propertyCountResult.rows[0].available_properties);
