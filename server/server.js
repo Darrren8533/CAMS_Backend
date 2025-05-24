@@ -3651,6 +3651,7 @@ app.get('/clusters/names', async (req, res) => {
 // POST create a new cluster
 app.post('/clusters', async (req, res) => {
   const { clusterName, clusterState, clusterProvince } = req.body;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   
   if (!clusterName || !clusterState || !clusterProvince) {
     return res.status(400).json({ 
@@ -3662,9 +3663,9 @@ app.post('/clusters', async (req, res) => {
   try {
     const result = await pool.query(
       `INSERT INTO clusters (clustername, clusterstate, clusterprovince, timestamp) 
-       VALUES ($1, $2, $3, NOW()) 
+       VALUES ($1, $2, $3, $4) 
        RETURNING *`,
-      [clusterName, clusterState, clusterProvince]
+      [clusterName, clusterState, clusterProvince, timestamp]
     );
     
     res.json({ 
