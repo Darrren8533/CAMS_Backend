@@ -1756,7 +1756,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
               rc.rctitle AS "customerTitle",
               p.propertyaddress AS "reservationProperty",
               r.checkindatetime AS "reservationCheckInDate",
-              r.checkoutdatetime AS "reservationCheckOutDate"
+              r.checkoutdatetime AS "reservationCheckOutDate",
               r.userid AS "customerID"
        FROM reservation r
        JOIN properties p ON p.propertyid = r.propertyid
