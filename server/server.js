@@ -1723,7 +1723,7 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
 // Send New Room Suggestion To Customer
 app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
   const { propertyid, reservationid } = req.params;
-  const { creatorid, creatorUsername } = req.query;
+  const { creatorid, creatorUsername } = req.query; 
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
@@ -1757,6 +1757,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
               p.propertyaddress AS "reservationProperty",
               r.checkindatetime AS "reservationCheckInDate",
               r.checkoutdatetime AS "reservationCheckOutDate"
+              r.userid AS "customerID"
        FROM reservation r
        JOIN properties p ON p.propertyid = r.propertyid
        JOIN reservation_customer_details rc ON rc.rcID = r.rcID
@@ -1774,8 +1775,27 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
       customerTitle,
       reservationProperty,
       reservationCheckInDate,
-      reservationCheckOutDate
+      reservationCheckOutDate,
+      customerID
     } = customerReservationResult.rows[0];
+
+    const customerEmailResult = await client.query(
+      `SELECT u.uemail
+       FROM users u
+       JOIN reservation r ON u.userid = r.userid
+       WHERE u.userid = $1`,
+      [customerID]
+    );
+
+    const customerEmail = customerEmailResult.rows[0].uemail;
+
+    const updateSuggestedEmailResult = await client.query(
+      `UPDATE reservation
+       SET suggestedemail = $1
+       WHERE reservationid = $2
+      `,
+      [customerEmail, reservationid]
+    );
 
     // Email configuration
     const transporter = nodemailer.createTransport({
