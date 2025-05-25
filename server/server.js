@@ -1787,14 +1787,14 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
       [customerID]
     );
 
-    const customerEmail = customerEmailResult.rows[0].uemail;
+    const actualCustomerEmail = customerEmailResult.rows[0].uemail;
 
     const updateSuggestedEmailResult = await client.query(
       `UPDATE reservation
        SET suggestedemail = $1
        WHERE reservationid = $2
       `,
-      [customerEmail, reservationid]
+      [actualCustomerEmail, reservationid]
     );
 
     // Email configuration
@@ -1808,7 +1808,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: customerEmail,
+      to: actualCustomerEmail,
       subject: 'Booking Request Rejected & New Room Suggestion',
       html: `
       <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
