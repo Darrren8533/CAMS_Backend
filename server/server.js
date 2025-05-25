@@ -2317,9 +2317,13 @@ app.post('/reservation/:userid', async (req, res) => {
     );
 
     const rcid = customerResult.rows[0].rcid;
-    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000); // Malaysia time (UTC+8)
     const checkIn = new Date(checkindatetime);
-    const reservationblocktime = new Date(checkIn - 3 * 24 * 60 * 60 * 1000);
+    let reservationblocktime = new Date(checkIn.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+    if (reservationDateTime > reservationblocktime) {
+      reservationblocktime = new Date(checkIn.getTime() - 1 * 24 * 60 * 60 * 1000);
+    }
 
     const reservationResult = await client.query(
       `INSERT INTO reservation 
