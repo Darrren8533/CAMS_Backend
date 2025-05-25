@@ -2422,7 +2422,7 @@ app.post('/reservation/:userid', async (req, res) => {
         request,
         parseFloat(parseFloat(totalprice).toFixed(2)),
         rcid,
-        'Pending',
+        reservationstatus,
         userid
       ]
     );
