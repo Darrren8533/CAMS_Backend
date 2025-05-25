@@ -1577,6 +1577,17 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
+    await client.query(
+      `INSERT INTO book_and_pay_log 
+       (logtime, log, userid)
+       VALUES ($1, $2, $3)`,
+      [
+        timestamp,
+        `${creatorUsername} Send Booking Request (${reservationProperty})`,
+        creatorid
+      ]
+    );
+
     await client.query (
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
@@ -1661,6 +1672,17 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+
+    await client.query(
+      `INSERT INTO book_and_pay_log 
+       (logtime, log, userid)
+       VALUES ($1, $2, $3)`,
+      [
+        timestamp,
+        `${creatorUsername} Accepted Booking Request (${reservationProperty})`,
+        creatorid
+      ]
+    );
 
     await client.query (
       `INSERT INTO audit_trail (
@@ -1768,7 +1790,6 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    // Add log record
     await client.query(
       `INSERT INTO book_and_pay_log 
        (logtime, log, userid)
@@ -2100,6 +2121,17 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
+    await client.query(
+      `INSERT INTO book_and_pay_log 
+       (logtime, log, userid)
+       VALUES ($1, $2, $3)`,
+      [
+        timestamp,
+        `${creatorUsername} Send Suggest Notification`,
+        creatorid
+      ]
+    );
+
     await client.query (
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
@@ -2197,6 +2229,17 @@ app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
+    await client.query(
+      `INSERT INTO book_and_pay_log 
+       (logtime, log, userid)
+       VALUES ($1, $2, $3)`,
+      [
+        timestamp,
+        `${reservationProperty} Reservation Picked Up By ${creatorUsername}`,
+        creatorid
+      ]
+    );
+
     await client.query (
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
@@ -2261,13 +2304,12 @@ app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
       html: `
       <h1><b>Dear ${property.operatorTitle} ${property.operatorUsername},</b></h1><hr/>
       <p>Your suggested room <b>${property.suggestPropertyAddress}</b> has been <span style="color: red">Rejected</span>.</p> 
-      <p>All Actions For This Reservation Will Be <b>Terminated</b></p>
+      <p>All Actions For This Reservation Will Be <b>Terminated</b>.</p>
       `,
     };
 
     await transporter.sendMail(mailOptions);
 
-    // Add log record
     await client.query(
       `INSERT INTO book_and_pay_log 
        (logtime, log, userid)
@@ -2278,8 +2320,6 @@ app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
         creatorid
       ]
     );
-
-    await client.query('COMMIT');
 
     await client.query (
       `INSERT INTO audit_trail (
@@ -2299,6 +2339,8 @@ app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   if (!userid) {
@@ -2317,7 +2359,7 @@ app.post('/reservation/:userid', async (req, res) => {
     );
 
     const rcid = customerResult.rows[0].rcid;
-    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000); // Malaysia time (UTC+8)
+    const reservationDateTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
     const checkIn = new Date(checkindatetime);
     let reservationblocktime = new Date(checkIn.getTime() - 3 * 24 * 60 * 60 * 1000);
 
@@ -2350,7 +2392,6 @@ app.post('/reservation/:userid', async (req, res) => {
     const userResult = await client.query('SELECT username FROM users WHERE userid = $1', [userid]);
     const username = userResult.rows.length > 0 ? userResult.rows[0].username : userid;
 
-    // Add log entry to Book_and_Pay_Log table
     await client.query(
       `INSERT INTO Book_and_Pay_Log 
        (logTime, log, userID)
@@ -2360,6 +2401,13 @@ app.post('/reservation/:userid', async (req, res) => {
         `${username} created reservation #${reservationid} for property #${propertyid}`,
         userid
       ]
+    );
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [propertyid, timestamp, "Reservation", "POST", "Create Reservation", creatorid, creatorUsername]
     );
 
     await client.query('COMMIT');
