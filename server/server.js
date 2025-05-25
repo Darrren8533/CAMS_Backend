@@ -2377,7 +2377,7 @@ app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
 
 // Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
-  const { propertyid, checkindatetime, checkoutdatetime, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
+  const { propertyid, checkindatetime, checkoutdatetime, reservationstatus, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
   const { creatorid, creatorUsername } = req.query;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
