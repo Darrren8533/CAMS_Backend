@@ -551,9 +551,27 @@ app.get('/users/operators', async (req, res) => {
   try {
     client = await pool.connect();
     const result = await client.query(`
-      SELECT userid, clusterid, username, uimage,  ufirstname, ulastname, uemail, uphoneno, usergroup, uactivation, ustatus, ugender, ucountry, uzipcode, utitle
-      FROM users
-      WHERE usergroup IN ('Moderator', 'Administrator')
+      SELECT 
+        u.userid, 
+        u.clusterid, 
+        u.username, 
+        u.uimage,  
+        u.ufirstname, 
+        u.ulastname, 
+        u.uemail, 
+        u.uphoneno, 
+        u.usergroup, 
+        u.uactivation, 
+        u.ustatus, 
+        u.ugender, 
+        u.ucountry, 
+        u.uzipcode, 
+        u.utitle,
+        c.clustername
+      FROM users u
+      LEFT JOIN clusters c ON u.clusterid = c.clusterid
+      WHERE u.usergroup IN ('Moderator', 'Administrator')
+      ORDER BY u.username
     `);
     res.json(result.rows);
   } catch (err) {
