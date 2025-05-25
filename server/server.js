@@ -3275,7 +3275,6 @@ app.get('/reservationTable', async (req, res) => {
             JOIN properties p ON r.propertyid = p.propertyid
             JOIN users u ON p.userid = u.userid -- Join with users to get the username
             JOIN reservation_customer_details rc ON r.rcid = rc.rcid
-            WHERE r.reservationstatus IN ('Pending', 'Accepted', 'Rejected', 'Canceled', 'Paid')
         `;
 
         // Add filtering for Moderators
