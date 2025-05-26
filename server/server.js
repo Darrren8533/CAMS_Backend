@@ -2591,7 +2591,7 @@ app.get("/users/finance", async (req, res) => {
           SUM(totalprice) AS monthlyrevenue,
           COUNT(reservationid) AS monthlyreservations
         FROM reservation
-        WHERE reservationstatus = 'Accepted'
+        WHERE reservationstatus = 'Paid'
         GROUP BY TO_CHAR(checkindatetime, 'YYYY-MM')
         ORDER BY month;
         `,
@@ -2615,7 +2615,7 @@ app.get("/users/finance", async (req, res) => {
             SUM(totalprice) AS monthlyrevenue,
             COUNT(reservationid) AS monthlyreservations
           FROM reservation
-          WHERE reservationstatus = 'Accepted'
+          WHERE reservationstatus = 'Paid'
             AND propertyid IN (
               SELECT propertyid FROM properties 
               WHERE clusterid = ANY($1)
@@ -2645,7 +2645,7 @@ app.get("/users/finance", async (req, res) => {
             SUM(totalprice) AS monthlyrevenue,
             COUNT(reservationid) AS monthlyreservations
           FROM reservation
-          WHERE reservationstatus = 'Accepted'
+          WHERE reservationstatus = 'Paid'
             AND propertyid IN (
               SELECT propertyid FROM properties WHERE clusterid = ANY($1)
             )
@@ -2701,7 +2701,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
                 COUNT(r.reservationid) AS monthly_reservations
             FROM reservation r
             JOIN properties p ON r.propertyid = p.propertyid
-            WHERE r.reservationstatus = 'Accepted'
+            WHERE r.reservationstatus = 'Paid'
             GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
         ),
         total_available_nights AS (
@@ -2751,7 +2751,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
                 COUNT(r.reservationid) AS monthly_reservations
             FROM reservation r
             JOIN properties p ON r.propertyid = p.propertyid
-            WHERE r.reservationstatus = 'Accepted'
+            WHERE r.reservationstatus = 'Paid'
             AND p.clusterid = ANY($1)
             AND p.userid = $2
             GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
@@ -2805,7 +2805,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
                 COUNT(r.reservationid) AS monthly_reservations
             FROM reservation r
             JOIN properties p ON r.propertyid = p.propertyid
-            WHERE r.reservationstatus = 'Accepted'
+            WHERE r.reservationstatus = 'Paid'
             AND p.clusterid = ANY($1)
             GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
         ),
@@ -2895,7 +2895,7 @@ app.get("/users/RevPAR", async (req, res) => {
           properties p ON r.propertyid = p.propertyid
         WHERE 
           p.propertystatus = 'Available'
-          AND r.reservationstatus = 'Accepted'
+          AND r.reservationstatus = 'Paid'
         GROUP BY 
           TO_CHAR(r.checkindatetime, 'YYYY-MM')
         ORDER BY 
@@ -2942,7 +2942,7 @@ app.get("/users/RevPAR", async (req, res) => {
         WHERE 
           p.propertystatus = 'Available'
           AND p.clusterid = ANY($1)
-          AND r.reservationstatus = 'Accepted'
+          AND r.reservationstatus = 'Paid'
         GROUP BY 
           TO_CHAR(r.checkindatetime, 'YYYY-MM')
         ORDER BY 
@@ -2988,7 +2988,7 @@ app.get("/users/RevPAR", async (req, res) => {
         WHERE 
           p.propertystatus = 'Available'
           AND p.clusterid = ANY($1)
-          AND r.reservationstatus = 'Accepted'
+          AND r.reservationstatus = 'Paid'
         GROUP BY 
           TO_CHAR(r.checkindatetime, 'YYYY-MM')
         ORDER BY 
