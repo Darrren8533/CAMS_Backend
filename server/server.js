@@ -3216,8 +3216,7 @@ app.get('/cart', async (req, res) => {
       `SELECT 
         r.reservationid,
         r.propertyid,
-        p.propertyaddress, 
-        p.propertyimage,
+        p.*,
         r.checkindatetime,
         r.checkoutdatetime,
         r.reservationblocktime,
