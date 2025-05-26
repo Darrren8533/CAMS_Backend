@@ -4406,20 +4406,46 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
         [userid]
       );
   
-     const uemail = userEmail.rows[0].uemail;
+      const uemail = userEmail.rows[0].uemail;
   
-     const result = await client.query(
-      `
-         SELECT r.*, p.*
-         FROM reservation r
-         JOIN properties p ON r.propertyid = p.propertyid
-         WHERE $1 = ANY (string_to_array(suggestedemail, ','))
-         AND reservationstatus = 'Suggested'
-       `,
-       [uemail]
-     );
+      const result = await client.query(
+        `
+          SELECT r.*, p.*
+          FROM reservation r
+          JOIN properties p ON r.propertyid = p.propertyid
+          WHERE $1 = ANY (string_to_array(suggestedemail, ','))
+          AND reservationstatus = 'Suggested'
+        `,
+        [uemail]
+      );
+
+      // Process the properties to handle images like in /product endpoint
+      const processedReservations = result.rows.map(reservation => {
+        console.log(`Reservation ID ${reservation.reservationid} - Original image data:`, 
+                    reservation.propertyimage ? reservation.propertyimage.substring(0, 50) + '...' : 'No image');
+        
+        const processedReservation = {
+          ...reservation,
+          propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
+        };
+        
+        console.log(`Reservation ID ${reservation.reservationid} - Processed image array length:`, 
+                    processedReservation.propertyimage.length);
+        
+        return processedReservation;
+      });
       
-     res.json(result.rows);
+      if (processedReservations.length > 0) {
+        console.log('Sample processed reservation object:');
+        const sampleReservation = {...processedReservations[0]};
+        if (sampleReservation.propertyimage && sampleReservation.propertyimage.length > 0) {
+          sampleReservation.propertyimage = [`${sampleReservation.propertyimage[0].substring(0, 50)}... (truncated)`, 
+                                           `and ${sampleReservation.propertyimage.length - 1} more images`];
+        }
+        console.log(JSON.stringify(sampleReservation, null, 2));
+      }
+      
+      res.json(processedReservations);
   } catch (err) {
     console.error('Error fetching suggested reservations:', err);
     res.status(500).json({ message: 'Server error', success: false });
