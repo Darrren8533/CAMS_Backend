@@ -1791,18 +1791,10 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
 
     const updateSuggestedEmailResult = await client.query(
       `UPDATE reservation
-       SET suggestedemail = $1
-       WHERE reservationid = $2
+       SET propertyid = $1, suggestedemail = $2
+       WHERE reservationid = $3
       `,
-      [actualCustomerEmail, reservationid]
-    );
-
-    const updateReservationResult = await client.query(
-      `UPDATE reservation
-       SET propertyid = $1
-       WHERE reservationid = $2
-      `,
-      [propertyid, reservationid]
+      [propertyid, actualCustomerEmail, reservationid]
     );
 
     // Email configuration
