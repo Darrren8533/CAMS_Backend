@@ -1797,6 +1797,14 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
       [actualCustomerEmail, reservationid]
     );
 
+    const updateReservationResult = await client.query(
+      `UPDATE reservation
+       SET propertyid = $1
+       WHERE reservationid = $2
+      `,
+      [propertyid, reservationid]
+    );
+
     // Email configuration
     const transporter = nodemailer.createTransport({
       service: 'gmail',
