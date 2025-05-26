@@ -2447,7 +2447,7 @@ app.post('/reservation/:userid', async (req, res) => {
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [propertyid, timestamp, "Reservation", "POST", "Create Reservation", creatorid, creatorUsername]
+        [reservationid, timestamp, "Reservation", "POST", "Create Reservation", creatorid, creatorUsername]
     );
 
     await client.query('COMMIT');
