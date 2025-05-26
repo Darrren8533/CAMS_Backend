@@ -2606,7 +2606,7 @@ app.get("/users/finance", async (req, res) => {
       );
     } else if (usergroup === 'Moderator') { 
         const clusterResult = await pool.query(
-          `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+          `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
           [userid]
         );
     
@@ -2636,7 +2636,7 @@ app.get("/users/finance", async (req, res) => {
         ); 
     } else {
        const clusterResult = await pool.query(
-          `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+          `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
           [userid]
         );
     
@@ -2740,7 +2740,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
       `,);
     } else if (usergroup === 'Moderator') {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -2794,7 +2794,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
       `, [clusterids, userid]);
     } else {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -2913,7 +2913,7 @@ app.get("/users/RevPAR", async (req, res) => {
       );
     } else if (usergroup === 'Moderator') {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -2960,7 +2960,7 @@ app.get("/users/RevPAR", async (req, res) => {
       );
     } else {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -3057,7 +3057,7 @@ app.get("/users/cancellation_rate", async (req, res) => {
       );
     } else if (usergroup === 'Moderator') {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -3089,7 +3089,7 @@ app.get("/users/cancellation_rate", async (req, res) => {
       );
     } else {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -3175,7 +3175,7 @@ app.get("/users/customer_retention_rate", async (req, res) => {
       );
     } else if (usergroup === 'Moderator') {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -3210,7 +3210,7 @@ app.get("/users/customer_retention_rate", async (req, res) => {
       );
     } else {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -3293,7 +3293,7 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
       );
     } else if (usergroup === 'Moderator') {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -3320,7 +3320,7 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
       );
     } else {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -3393,7 +3393,7 @@ app.get("/users/alos", async (req, res) => {
       );
     } else if (usergroup === 'Moderator') {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
@@ -3419,7 +3419,7 @@ app.get("/users/alos", async (req, res) => {
       );
     } else {
       const clusterResult = await pool.query(
-        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
   
