@@ -4425,8 +4425,9 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
   
       const result = await client.query(
         `
-          SELECT r.*, p.*
+          SELECT r.*, p.*, cl.clustername
           FROM reservation r
+          JOIN clusters cl ON p.clusterid = cl.clusterid
           JOIN properties p ON r.propertyid = p.propertyid
           WHERE $1 = ANY (string_to_array(suggestedemail, ','))
           AND reservationstatus = 'Suggested'
