@@ -2604,6 +2604,36 @@ app.get("/users/finance", async (req, res) => {
         ORDER BY month;
         `,
       );
+    } else if (usergroup === 'Moderator') { 
+        const clusterResult = await pool.query(
+          `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+          [userid]
+        );
+    
+        if (clusterResult.rows.length === 0) {
+          return res.status(404).json({ message: "No cluster found for this user" });
+        }
+    
+        const clusterids = clusterResult.rows.map(row => row.clusterid);
+    
+        result = await pool.query(
+          `
+          SELECT 
+            TO_CHAR(checkindatetime, 'YYYY-MM') AS month,
+            SUM(totalprice) AS monthlyrevenue,
+            COUNT(reservationid) AS monthlyreservations
+          FROM reservation
+          WHERE reservationstatus = 'Accepted'
+            AND propertyid IN (
+              SELECT propertyid FROM properties 
+              WHERE clusterid = ANY($1)
+              AND userid = $2
+            )
+          GROUP BY TO_CHAR(checkindatetime, 'YYYY-MM')
+          ORDER BY month;
+          `,
+          [clusterids, userid]
+        ); 
     } else {
        const clusterResult = await pool.query(
           `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
@@ -2708,6 +2738,60 @@ app.get("/users/occupancy_rate", async (req, res) => {
         JOIN total_available_nights tan ON md.month = tan.month
         ORDER BY md.month;
       `,);
+    } else if (usergroup === 'Moderator') {
+      const clusterResult = await pool.query(
+        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        [userid]
+      );
+  
+      if (clusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "No cluster found for user" });
+      }
+  
+      const clusterids = clusterResult.rows.map(row => row.clusterid);
+  
+      result = await pool.query(`
+        WITH monthly_data AS (
+            SELECT 
+                TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+                SUM(EXTRACT(DAY FROM (r.checkoutdatetime - r.checkindatetime))) AS total_reserved_nights,
+                SUM(r.totalprice) AS monthly_revenue,
+                COUNT(r.reservationid) AS monthly_reservations
+            FROM reservation r
+            JOIN properties p ON r.propertyid = p.propertyid
+            WHERE r.reservationstatus = 'Accepted'
+            AND p.clusterid = ANY($1)
+            AND p.userid = $2
+            GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
+        ),
+        total_available_nights AS (
+            SELECT 
+                TO_CHAR(gs.month, 'YYYY-MM') AS month,
+                COUNT(p.propertyid) * DATE_PART('day', gs.month + INTERVAL '1 month' - INTERVAL '1 day') AS total_available_nights
+            FROM (
+                SELECT generate_series(
+                    (SELECT DATE_TRUNC('month', MIN(checkindatetime)) FROM reservation),
+                    (SELECT DATE_TRUNC('month', MAX(checkoutdatetime)) FROM reservation),
+                    INTERVAL '1 month'
+                ) AS month
+            ) gs
+            CROSS JOIN properties p
+            WHERE p.propertystatus = 'Available'
+            AND p.clusterid = ANY($1)
+            AND p.userid = $2
+            GROUP BY gs.month
+        )
+        SELECT 
+            md.month,
+            md.monthly_revenue,
+            md.monthly_reservations,
+            md.total_reserved_nights,
+            tan.total_available_nights,
+            (md.total_reserved_nights::DECIMAL / NULLIF(tan.total_available_nights, 0) * 100) AS occupancy_rate
+        FROM monthly_data md
+        JOIN total_available_nights tan ON md.month = tan.month
+        ORDER BY md.month;
+      `, [clusterids, userid]);
     } else {
       const clusterResult = await pool.query(
         `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
@@ -2827,7 +2911,7 @@ app.get("/users/RevPAR", async (req, res) => {
         `,
         [availableProperties]
       );
-    } else {
+    } else if (usergroup === 'Moderator') {
       const clusterResult = await pool.query(
         `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
         [userid]
@@ -2846,6 +2930,52 @@ app.get("/users/RevPAR", async (req, res) => {
            AND clusterid = ANY($1)
            AND userid = $2;`,
         [clusterids, userid]
+      );
+  
+      const availableProperties = parseInt(propertyCountResult.rows[0].available_properties);
+  
+      if (availableProperties === 0) {
+        return res.status(404).json({ message: "No available properties found" });
+      }
+  
+      revparResult = await pool.query(
+        `
+        SELECT 
+          TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+          COALESCE(SUM(r.totalprice), 0) / $2 AS revpar
+        FROM 
+          reservation r
+        INNER JOIN 
+          properties p ON r.propertyid = p.propertyid
+        WHERE 
+          p.propertystatus = 'Available'
+          AND p.clusterid = ANY($1)
+          AND r.reservationstatus = 'Accepted'
+        GROUP BY 
+          TO_CHAR(r.checkindatetime, 'YYYY-MM')
+        ORDER BY 
+          month;
+        `,
+        [clusterids, availableProperties]
+      );
+    } else {
+      const clusterResult = await pool.query(
+        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        [userid]
+      );
+  
+      if (clusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "No cluster found for this user" });
+      }
+  
+      const clusterids = clusterResult.rows.map(row => row.clusterid);
+  
+      propertyCountResult = await pool.query(
+        `SELECT COUNT(*) AS available_properties 
+         FROM properties 
+         WHERE propertystatus = 'Available' 
+           AND clusterid = ANY($1);`,
+        [clusterids]
       );
   
       const availableProperties = parseInt(propertyCountResult.rows[0].available_properties);
@@ -2924,6 +3054,38 @@ app.get("/users/cancellation_rate", async (req, res) => {
         ORDER BY 
           month;
         `,
+      );
+    } else if (usergroup === 'Moderator') {
+      const clusterResult = await pool.query(
+        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        [userid]
+      );
+  
+      if (clusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "No cluster found for this user" });
+      }
+  
+      const clusterids = clusterResult.rows.map(row => row.clusterid);
+  
+      cancellationRateResult = await pool.query(
+        `
+        SELECT 
+          TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+          (COUNT(CASE WHEN r.reservationstatus = 'Canceled' THEN 1 END) * 100.0) / NULLIF(COUNT(r.reservationid), 0) AS cancellation_rate
+        FROM 
+          reservation r
+        INNER JOIN 
+          properties p ON r.propertyid = p.propertyid
+        WHERE 
+          p.clusterid = ANY($1)
+        AND 
+          p.userid = $2
+        GROUP BY 
+          TO_CHAR(r.checkindatetime, 'YYYY-MM')
+        ORDER BY 
+          month;
+        `,
+        [clusterids, userid]
       );
     } else {
       const clusterResult = await pool.query(
@@ -3011,6 +3173,41 @@ app.get("/users/customer_retention_rate", async (req, res) => {
         ORDER BY mu.month;
         `,
       );
+    } else if (usergroup === 'Moderator') {
+      const clusterResult = await pool.query(
+        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        [userid]
+      );
+  
+      if (clusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "No cluster found for this user" });
+      }
+  
+      const clusterids = clusterResult.rows.map(row => row.clusterid);
+  
+      result = await pool.query(
+        `
+        WITH monthly_users AS (
+          SELECT 
+            TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+            r.userid
+          FROM reservation r
+          INNER JOIN properties p ON r.propertyid = p.propertyid
+          WHERE p.clusterid = ANY($1)
+          AND p.userid = $2
+        ),
+        all_users AS (
+          SELECT DISTINCT userid FROM users
+        )
+        SELECT 
+          mu.month,
+          (COUNT(DISTINCT mu.userid) * 100.0) / NULLIF((SELECT COUNT(*) FROM all_users), 0) AS customer_retention_rate
+        FROM monthly_users mu
+        GROUP BY mu.month
+        ORDER BY mu.month;
+        `,
+        [clusterids, userid]
+      );
     } else {
       const clusterResult = await pool.query(
         `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
@@ -3094,6 +3291,33 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
         ORDER BY month;
         `,
       );
+    } else if (usergroup === 'Moderator') {
+      const clusterResult = await pool.query(
+        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        [userid]
+      );
+  
+      if (clusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "No cluster found for this user" });
+      }
+  
+      const clusterids = clusterResult.rows.map(row => row.clusterid);
+  
+      result = await pool.query(
+        `
+        SELECT 
+          TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+          AVG(p.rating) AS guest_satisfaction_score
+        FROM reservation r
+        INNER JOIN properties p ON r.propertyid = p.propertyid
+        WHERE p.clusterid = ANY($1) 
+        AND p.rating IS NOT NULL
+        AND p.userid = $2
+        GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
+        ORDER BY month;
+        `,
+        [clusterids, userid]
+      );
     } else {
       const clusterResult = await pool.query(
         `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
@@ -3166,6 +3390,32 @@ app.get("/users/alos", async (req, res) => {
         GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
         ORDER BY month;
         `,
+      );
+    } else if (usergroup === 'Moderator') {
+      const clusterResult = await pool.query(
+        `SELECT DISTINCT clusterid FROM properties WHERE userid = $1`,
+        [userid]
+      );
+  
+      if (clusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "No cluster found for this user" });
+      }
+  
+      const clusterids = clusterResult.rows.map((row) => row.clusterid);
+  
+      result = await pool.query(
+        `
+        SELECT 
+          TO_CHAR(r.checkindatetime, 'YYYY-MM') AS month,
+          COALESCE(SUM(EXTRACT(DAY FROM r.checkoutdatetime - r.checkindatetime)) / NULLIF(COUNT(r.reservationid), 0), 0) AS average_length_of_stay
+        FROM reservation r
+        INNER JOIN properties p ON r.propertyid = p.propertyid
+        WHERE p.clusterid = ANY($1)
+        AND p.userid = $2
+        GROUP BY TO_CHAR(r.checkindatetime, 'YYYY-MM')
+        ORDER BY month;
+        `,
+        [clusterids, userid]
       );
     } else {
       const clusterResult = await pool.query(
