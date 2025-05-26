@@ -2504,9 +2504,8 @@ app.get('/users/booklog', async (req, res) => {
             b.userid, 
             b.logtime AS timestamp, 
             b.log AS action
-        FROM book_and_pay_log b
-        JOIN users u ON b.userid = u.userid
-        ORDER BY b.logtime DESC;
+        FROM book_and_pay_log
+        ORDER BY logtime DESC;
       `,);
   
       // Format timestamps to remove T and milliseconds with Z
@@ -4346,9 +4345,7 @@ app.get("/auditTrails", async (req, res) => {
         `
         SELECT 
           a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid, a.username
-        FROM audit_trail a 
-        JOIN users u
-        ON a.userid = u.userid
+        FROM audit_trail
         `,
       );
     } else {
