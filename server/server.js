@@ -4327,8 +4327,12 @@ app.get("/auditTrails", async (req, res) => {
     return res.status(400).json({ message: "Missing userid parameter" });
   }
 
+  let client;
+
   try {
-    const ownerResult = await pool.query(
+    client = await pool.connect();
+
+    const ownerResult = await client.query(
       `SELECT usergroup
        FROM users
        WHERE userid = $1
@@ -4341,15 +4345,15 @@ app.get("/auditTrails", async (req, res) => {
     let result;
 
     if (usergroup === 'Owner') {
-      result = await pool.query(
+      result = await client.query(
         `
         SELECT 
           a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid, a.username
         FROM audit_trail
-        `,
+        `
       );
     } else {
-      const clusterResult = await pool.query(
+      const clusterResult = await client.query(
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
@@ -4360,7 +4364,7 @@ app.get("/auditTrails", async (req, res) => {
   
       const clusterids = clusterResult.rows.map((row) => row.clusterid);
   
-      result = await pool.query(
+      result = await client.query(
         `
         SELECT 
           a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid, a.username
@@ -4373,17 +4377,28 @@ app.get("/auditTrails", async (req, res) => {
       );
     }
 
-    if (result.rows.length > 0) {
-      console.log("Audit trails result:", result.rows);
+    // Format timestamps to yyyy-mm-dd
+    const formattedRows = result.rows.map(row => {
+      if (row.timestamp) {
+        const date = new Date(row.timestamp);
+        row.timestamp = date.toISOString().split('T')[0]; 
+      }
+      return row;
+    });
+
+    if (formattedRows.length > 0) {
       res.json({
-        auditTrails: result.rows,
+        auditTrails: formattedRows,
       });
     } else {
       res.status(404).json({ message: "No audit trail found" });
     }
   } catch (err) {
-    console.error("Error fetching audit trail data:", err);
     res.status(500).json({ message: "Internal Server Error", details: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
