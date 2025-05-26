@@ -4377,16 +4377,17 @@ app.get("/auditTrails", async (req, res) => {
       );
     }
 
-    // Format timestamps to yyyy-mm-dd
+    // Format timestamps to yyyy-mm-dd hh:mm:ss
     const formattedRows = result.rows.map(row => {
       if (row.timestamp) {
         const date = new Date(row.timestamp);
-        row.timestamp = date.toISOString().split('T')[0]; 
+        row.timestamp = date.toISOString().replace('T', ' ').split('.')[0]; 
       }
       return row;
     });
 
     if (formattedRows.length > 0) {
+      console.log("Audit trails result:", formattedRows);
       res.json({
         auditTrails: formattedRows,
       });
@@ -4394,6 +4395,7 @@ app.get("/auditTrails", async (req, res) => {
       res.status(404).json({ message: "No audit trail found" });
     }
   } catch (err) {
+    console.error("Error fetching audit trail data:", err);
     res.status(500).json({ message: "Internal Server Error", details: err.message });
   } finally {
     if (client) {
