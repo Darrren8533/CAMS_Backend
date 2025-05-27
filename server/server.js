@@ -490,7 +490,7 @@ app.get('/users/customers', async (req, res) => {
 
     const clusterResult = await client.query(
       `
-        SELECT clusterid 
+        SELECT clusterid, usergroup 
         FROM users
         WHERE userid = $1
       `,
@@ -498,15 +498,26 @@ app.get('/users/customers', async (req, res) => {
     );
 
     const clusterid = clusterResult.rows[0].clusterid;
-    
-    const result = await client.query(`
-      SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
-      FROM users
-      WHERE usergroup = 'Customer'
-      AND clusterid = $1
-    `,
-    [clusterid]
-    );
+    const usergroup = clusterResult.rows[0].usergroup;
+    let result;
+
+    if (usergroup === 'Owner') {
+      result = await client.query(`
+        SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
+        FROM users
+        WHERE usergroup = 'Customer'
+      `
+      ); 
+    } else {
+      result = await client.query(`
+        SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
+        FROM users
+        WHERE usergroup = 'Customer'
+        AND clusterid = $1
+      `,
+      [clusterid]
+      );
+    }
     
     res.json(result.rows);
   } catch (err) {
