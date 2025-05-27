@@ -482,14 +482,32 @@ app.post("/google-login", async (req, res) => {
 
 //Fetch list of customers
 app.get('/users/customers', async (req, res) => {
+  const { userid } = req.query;
   let client;
+  
   try {
     client = await pool.connect();
+
+    const clusterResult = await client.query(
+      `
+        SELECT clusterid 
+        FROM users
+        WHERE userid = $1
+      `,
+      [userid]
+    );
+
+    const clusterid = clusterResult.rows[0].clusterid;
+    
     const result = await client.query(`
       SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
       FROM users
       WHERE usergroup = 'Customer'
-    `);
+      AND clusterid = $1
+    `,
+    [clusterid]
+    );
+    
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching customers:', err);
