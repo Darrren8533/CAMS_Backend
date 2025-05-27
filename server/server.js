@@ -2501,9 +2501,9 @@ app.get('/users/booklog', async (req, res) => {
     if (usergroup === 'Owner') {
       result = await client.query(`
         SELECT 
-            b.userid, 
-            b.logtime AS timestamp, 
-            b.log AS action
+            userid, 
+            logtime AS timestamp, 
+            log AS action
         FROM book_and_pay_log
         ORDER BY logtime DESC;
       `,);
@@ -4348,7 +4348,7 @@ app.get("/auditTrails", async (req, res) => {
       result = await client.query(
         `
         SELECT 
-          a.audittrailid, a.entityid, a.timestamp, a.entitytype, a.actiontype, a.action, a.userid, a.username
+          audittrailid, entityid, timestamp, entitytype, actiontype, action, userid, username
         FROM audit_trail
         `
       );
