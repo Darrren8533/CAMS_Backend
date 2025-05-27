@@ -553,16 +553,44 @@ app.get('/users/owners', async (req, res) => {
 
 // Fetch list of moderators
 app.get('/users/moderators', async (req, res) => {
+  const { userid } = req.query;
   let client;
+  
   try {
     client = await pool.connect();
 
-    // Query to fetch moderators
-    const result = await client.query(`
-      SELECT userid, clusterid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
-      FROM users
-      WHERE usergroup = 'Moderator'
-    `);
+    const clusterResult = await client.query(
+      `
+        SELECT clusterid, usergroup 
+        FROM users
+        WHERE userid = $1
+      `,
+      [userid]
+    );
+
+    const clusterid = clusterResult.rows[0].clusterid;
+    const usergroup = clusterResult.rows[0].usergroup;
+    let result;
+
+    if (usergroup === 'Owner') {
+      // Query to fetch moderators
+      result = await client.query(`
+        SELECT userid, clusterid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
+        FROM users
+        WHERE usergroup = 'Moderator'
+      `);
+    } else {
+      result = await client.query(
+        `
+        SELECT userid, clusterid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
+        FROM users
+        WHERE usergroup = 'Moderator'
+        AND clusterid = $1
+        `,
+        [clusterid]
+      );
+    }
+    
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching moderators:', err);
