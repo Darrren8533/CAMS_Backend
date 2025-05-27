@@ -2404,7 +2404,7 @@ app.post('/reservation/:userid', async (req, res) => {
     let reservationblocktime = new Date(checkIn.getTime() - 3 * 24 * 60 * 60 * 1000);
 
     if (reservationDateTime > reservationblocktime) {
-      reservationblocktime = new Date(checkIn.getTime() - 1 * 24 * 60 * 60 * 1000);
+      reservationblocktime = new Date(checkIn.getTime() - 1000);
     }
 
     const reservationResult = await client.query(
