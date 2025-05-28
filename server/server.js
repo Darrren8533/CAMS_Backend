@@ -112,7 +112,7 @@ process.on('SIGINT', async () => {
 
 // Registration
 app.post('/register', async (req, res) => {
-  const { firstName, lastName, username, password, email, phoneNumber } = req.body;
+  const { firstName, lastName, username, password, email, uphoneno } = req.body;
   let client;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   
@@ -158,11 +158,9 @@ app.post('/register', async (req, res) => {
         firstName,
         lastName, 
         '1',
-        phoneNumber
+        uphoneno
       ]
     };
-
-    console.log("phone number: ", phoneNumber);
     
     const userQueryResult = await client.query(insertUserQuery);
 
@@ -189,7 +187,6 @@ app.post('/register', async (req, res) => {
     }
   }
 });
-
 
 //Login
 app.post('/login', async (req, res) => {
