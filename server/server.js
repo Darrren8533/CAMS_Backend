@@ -1603,7 +1603,8 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
         r.checkoutdatetime, 
         r.request, 
         r.totalprice, 
-        p.propertyaddress, 
+        p.propertyaddress,
+        p.nearbylocation,
         u.uemail 
       FROM reservation_customer_details rc 
       JOIN reservation r ON rc.rcid = r.rcid 
@@ -1625,6 +1626,7 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
       request: reservationRequest = '-', 
       totalprice: reservationtotalprice, 
       propertyaddress: reservationProperty, 
+      nearbylocation: reservationAddress,
       uemail: userEmail 
     } = result.rows[0];
 
@@ -1646,6 +1648,7 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
       <p><b>Check Out Date:</b> ${reservationcheckoutdatetime}</p>
       <p><b>Request:</b> ${reservationRequest}</p>
       <p><b>Property Name:</b> ${reservationProperty}</p>
+      <p><b>Property Address:</b> ${reservationAddress}</p>
       <p><b>Total Price: <i>RM${reservationtotalprice}</i></b></p><br/>
       <p><b>Please kindly click the button below to make the decision in <b>12 hours</b> time frame.</b></p>
       <div style="margin: 10px 0;">
@@ -1876,8 +1879,8 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
       <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: red">rejected</span> due to room unavailability during the selected time.</p> 
       <p>A similar room with the details below is suggested for your consideration:</p> 
       <h3>Property Name: ${property.suggestpropertyAddress}</h3>
-      <p><b>Property Location:</b> ${property.suggestpropertyAddress}</p>
-      <p><b>Bed Type:</b> ${property.suggestPropertyBedType}</p>
+      <p><b>Property Location:</b> ${property.suggestPropertyLocation}</p>
+      <p><b>Bed Number:</b> ${property.suggestPropertyBedType}</p>
       <p><b>Pax Number:</b> ${property.suggestPropertyGuestPaxNo}</p>
       <p><b>Price: <i>RM${property.suggestPropertyPrice}</i></b></p><br/>
       <p>Please kindly make your decision by clicking the buttons below to login</p>
