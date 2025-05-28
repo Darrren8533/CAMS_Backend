@@ -112,7 +112,7 @@ process.on('SIGINT', async () => {
 
 // Registration
 app.post('/register', async (req, res) => {
-  const { firstName, lastName, username, password, email } = req.body;
+  const { firstName, lastName, username, password, email, phone } = req.body; 
   let client;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   
@@ -133,7 +133,6 @@ app.post('/register', async (req, res) => {
       return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
     
-    // Encrypt the password
     const encryptedPassword = encrypt(password);
     const defaultAvatarBase64 = await getDefaultAvatarBase64();
 
@@ -141,9 +140,9 @@ app.post('/register', async (req, res) => {
       text: `
         INSERT INTO users (
           username, password, uemail, utitle, usergroup, ustatus, uactivation, uimage,
-          ufirstname, ulastname, clusterid
+          ufirstname, ulastname, clusterid, uphoneno
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING userid
       `,
       values: [
@@ -157,7 +156,8 @@ app.post('/register', async (req, res) => {
         defaultAvatarBase64,
         firstName,
         lastName, 
-        '1'
+        '1',
+        phone
       ]
     };
     
@@ -186,6 +186,7 @@ app.post('/register', async (req, res) => {
     }
   }
 });
+
 
 //Login
 app.post('/login', async (req, res) => {
