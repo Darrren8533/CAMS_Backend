@@ -923,7 +923,8 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
       specialEventStartDate,
       specialEventEndDate,
       earlyBirdDiscountRate,
-      lastMinuteDiscountRate
+      lastMinuteDiscountRate,
+      isSpecialEventEnabled
   } = req.body;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
   
@@ -997,8 +998,8 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
               specialEventRate,
               earlyBirdDiscountRate,
               lastMinuteDiscountRate,
-              specialEventStartDate,
-              specialEventEndDate,
+              isSpecialEventEnabled ? specialEventStartDate : null,  // Use null if disabled
+              isSpecialEventEnabled ? specialEventEndDate : null,    // Use null if disabled
               userid,
               timestamp
           ]
