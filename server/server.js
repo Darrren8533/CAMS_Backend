@@ -161,6 +161,8 @@ app.post('/register', async (req, res) => {
         uphoneno
       ]
     };
+
+    console.log(uphoneno);
     
     const userQueryResult = await client.query(insertUserQuery);
 
