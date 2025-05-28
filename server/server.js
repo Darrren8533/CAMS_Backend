@@ -112,7 +112,7 @@ process.on('SIGINT', async () => {
 
 // Registration
 app.post('/register', async (req, res) => {
-  const { firstName, lastName, username, password, email, phone } = req.body; 
+  const { firstName, lastName, username, password, email, uphoneno } = req.body;
   let client;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   
@@ -133,6 +133,7 @@ app.post('/register', async (req, res) => {
       return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
     
+    // Encrypt the password
     const encryptedPassword = encrypt(password);
     const defaultAvatarBase64 = await getDefaultAvatarBase64();
 
@@ -157,7 +158,7 @@ app.post('/register', async (req, res) => {
         firstName,
         lastName, 
         '1',
-        phone
+        uphoneno
       ]
     };
     
