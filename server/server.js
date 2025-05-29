@@ -1876,7 +1876,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
       <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
       <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: red">rejected</span> due to room unavailability during the selected time.</p> 
       <p>A similar room with the details below is suggested for your consideration:</p> 
-      <h3>Property Name: ${property.suggestpropertyAddress}</h3>
+      <h3>Property Name: ${property.suggestPropertyAddress}</h3>
       <p><b>Property Location:</b> ${property.suggestPropertyLocation}</p>
       <p><b>Bed Number:</b> ${property.suggestPropertyBedType}</p>
       <p><b>Pax Number:</b> ${property.suggestPropertyGuestPaxNo}</p>
