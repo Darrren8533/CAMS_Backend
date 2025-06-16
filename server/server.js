@@ -4757,6 +4757,9 @@ app.post('/payment_success/:reservationid', async (req, res) => {
       checkoutdatetime: reservationCheckOutDate,
       reservationblocktime: paymentDueDate,
       propertyaddress: reservationProperty,
+      ulastname: operatorLastName,
+      uemail: operatorEmail,
+      utitle: operatorTitle,
     } = data;
 
     const transporter = nodemailer.createTransport({
@@ -4772,9 +4775,8 @@ app.post('/payment_success/:reservationid', async (req, res) => {
       to: customerEmail,
       subject: 'Booking Accepted',
       html: `
-        <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
-        <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: green">accepted</span>.</p> 
-        <p>Please kindly click the button below to make payment before <b>${paymentDueDate}</b> to secure your booking.</p>
+        <h1><b>Dear ${operatorTitle} ${operatorLastName},</b></h1><hr/>
+        <p>The booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: blue">Paid</span>.</p> 
         <div style="margin: 10px 0;">
           <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
         </div>
@@ -4789,7 +4791,7 @@ app.post('/payment_success/:reservationid', async (req, res) => {
        VALUES ($1, $2, $3)`,
       [
         timestamp,
-        `${creatorUsername} Accepted Booking Request (${reservationProperty})`,
+        `${creatorUsername} Made Payment For (${reservationProperty})`,
         creatorid
       ]
     );
@@ -4798,7 +4800,7 @@ app.post('/payment_success/:reservationid', async (req, res) => {
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "POST", "Accept Booking", creatorid, creatorUsername]
+        [reservationid, timestamp, "Reservation", "POST", "Make Payment", creatorid, creatorUsername]
     );
     
     res.status(200).json({ message: 'Email sent successfully' });
