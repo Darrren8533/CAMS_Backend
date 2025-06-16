@@ -4712,6 +4712,106 @@ app.get('/categories', async (req, res) => {
   }
 });
 
+// Send Payment Successfull Message To Operator
+app.post('/payment_success/:reservationid', async (req, res) => {
+  const { reservationid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  let client;
+
+  try {
+    client = await pool.connect();
+
+    const result = await client.query(
+      `SELECT 
+        rc.rclastname, 
+        rc.rcemail, 
+        rc.rctitle, 
+        r.checkindatetime, 
+        r.checkoutdatetime, 
+        r.reservationblocktime, 
+        p.propertyaddress,
+        u.ulastname,
+        u.uemail,
+        u.utitle
+      FROM reservation_customer_details rc 
+      JOIN reservation r ON rc.rcid = r.rcid 
+      JOIN properties p ON r.propertyid = p.propertyid 
+      JOIN users u ON p.userid = u.userid
+      WHERE r.reservationid = $1`,
+      [reservationid]
+    );
+
+    if (result.rows.length === 0) {
+      console.log('No matching reservation found.');
+      return res.status(404).json({ message: 'Reservation customer or property not found' });
+    }
+
+    const data = result.rows[0];
+
+    const {
+      rclastname: customerLastName,
+      rcemail: customerEmail,
+      rctitle: customerTitle,
+      checkindatetime: reservationCheckInDate,
+      checkoutdatetime: reservationCheckOutDate,
+      reservationblocktime: paymentDueDate,
+      propertyaddress: reservationProperty,
+    } = data;
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: customerEmail,
+      subject: 'Booking Accepted',
+      html: `
+        <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
+        <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: green">accepted</span>.</p> 
+        <p>Please kindly click the button below to make payment before <b>${paymentDueDate}</b> to secure your booking.</p>
+        <div style="margin: 10px 0;">
+          <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    await client.query(
+      `INSERT INTO book_and_pay_log 
+       (logtime, log, userid)
+       VALUES ($1, $2, $3)`,
+      [
+        timestamp,
+        `${creatorUsername} Accepted Booking Request (${reservationProperty})`,
+        creatorid
+      ]
+    );
+
+    await client.query (
+      `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reservationid, timestamp, "Reservation", "POST", "Accept Booking", creatorid, creatorUsername]
+    );
+    
+    res.status(200).json({ message: 'Email sent successfully' });
+  } catch (err) {
+    console.error('Error sending email:', err);
+    res.status(500).json({ message: 'Failed to send email', error: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
 // GET unique category names
 
 // Start the server
