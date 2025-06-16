@@ -2416,7 +2416,7 @@ app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
        VALUES ($1, $2, $3)`,
       [
         timestamp,
-        `Rejected Suggested Room (${property.suggestpropertyAddress})`,
+        `Rejected Suggested Room (${property.suggestPropertyAddress})`,
         creatorid
       ]
     );
