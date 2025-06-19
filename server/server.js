@@ -2548,12 +2548,15 @@ app.get('/users/booklog', async (req, res) => {
     client = await pool.connect();
 
     const ownerResult = await client.query(
-      `SELECT usergroup
+      `SELECT usergroup, username
        FROM users
-       WHERE userid = $1
-       `,
+       WHERE userid = $1`,
       [userid]
     );
+
+    if (ownerResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     const usergroup = ownerResult.rows[0].usergroup;
 
@@ -2563,13 +2566,15 @@ app.get('/users/booklog', async (req, res) => {
     if (usergroup === 'Owner') {
       result = await client.query(`
         SELECT 
-            userid, 
-            logtime AS timestamp, 
-            log AS action
-        FROM book_and_pay_log
-        ORDER BY logtime DESC;
-      `,);
-  
+            b.userid, 
+            u.username, 
+            b.logtime AS timestamp, 
+            b.log AS action
+        FROM book_and_pay_log b
+        JOIN users u ON b.userid = u.userid
+        ORDER BY b.logtime DESC;
+      `);
+
       // Format timestamps to remove T and milliseconds with Z
       formattedRows = result.rows.map(row => {
         if (row.timestamp) {
@@ -2584,17 +2589,18 @@ app.get('/users/booklog', async (req, res) => {
         `SELECT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (userClusterResult.rows.length === 0) {
         return res.status(404).json({ message: "User not found" });
       }
-  
+
       const userClusterid = userClusterResult.rows[0].clusterid;
-  
+
       // Get book and pay logs for users in the same cluster
       result = await client.query(`
         SELECT 
             b.userid, 
+            u.username, 
             b.logtime AS timestamp, 
             b.log AS action
         FROM book_and_pay_log b
@@ -2602,7 +2608,7 @@ app.get('/users/booklog', async (req, res) => {
         WHERE u.clusterid = $1
         ORDER BY b.logtime DESC;
       `, [userClusterid]);
-  
+
       // Format timestamps to remove T and milliseconds with Z
       formattedRows = result.rows.map(row => {
         if (row.timestamp) {
