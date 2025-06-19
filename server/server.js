@@ -4770,20 +4770,41 @@ app.post('/payment_success/:reservationid', async (req, res) => {
       },
     });
 
-    const mailOptions = {
+    const customerMailOptions = {
       from: process.env.EMAIL_USER,
       to: customerEmail,
-      subject: 'Booking Accepted',
+      subject: 'Your Payment Was Successful',
       html: `
-        <h1><b>Dear ${operatorTitle} ${operatorLastName},</b></h1><hr/>
-        <p>The booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: blue">Paid</span>.</p> 
+        <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
+        <p>Thank you for your payment!</p>
+        <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: blue">confirmed</span>.</p>
+        <p>We look forward to your stay.</p>
+        <br/>
+        <p>You may log in to your account to view the reservation details.</p>
         <div style="margin: 10px 0;">
-          <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px; margin-right: 10px;">Login</a>
+          <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px;">Login</a>
         </div>
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const operatorMailOptions = {
+      from: process.env.EMAIL_USER,
+      to: operatorEmail,
+      subject: 'Customer Payment Received',
+      html: `
+        <h1><b>Dear ${operatorTitle} ${operatorLastName},</b></h1><hr/>
+        <p>The booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: blue">paid</span> by the customer.</p> 
+        <p>Please prepare the room for the customer’s check-in.</p>
+        <br/>
+        <p>Click the button below if you wish to view the reservation details.</p>
+        <div style="margin: 10px 0;">
+          <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px;">Login</a>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(customerMailOptions);
+    await transporter.sendMail(operatorMailOptions);
 
     await client.query(
       `INSERT INTO book_and_pay_log 
