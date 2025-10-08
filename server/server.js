@@ -180,7 +180,6 @@ app.post('/register', async (req, res) => {
   } catch (err) {
     console.error('Error during registration:', err.message);
     console.error(err.stack);
-    console.log('Error:', err.message);
     res.status(500).json({ message: 'Server error', success: false });
   } finally {
     if (client) {
