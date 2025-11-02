@@ -4847,3 +4847,50 @@ app.post('/payment_success/:reservationid', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
+
+// add for checking date overlapping
+const express = require("express");
+const app = express();
+const cors = require("cors");
+
+app.use(cors());
+app.use(express.json());
+
+// Example: Pretend database of existing bookings
+const existingBookings = [
+  {
+    propertyId: 1,
+    checkIn: new Date("2025-11-05"),
+    checkOut: new Date("2025-11-10"),
+  },
+  {
+    propertyId: 1,
+    checkIn: new Date("2025-11-15"),
+    checkOut: new Date("2025-11-18"),
+  },
+];
+
+// API endpoint to check overlap
+app.post("/api/check-date-overlap", (req, res) => {
+  const { propertyId, checkIn, checkOut } = req.body;
+
+  if (!propertyId || !checkIn || !checkOut) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const newCheckIn = new Date(checkIn);
+  const newCheckOut = new Date(checkOut);
+
+  // Check overlap with existing bookings for that property
+  const hasOverlap = existingBookings.some(
+    (b) =>
+      b.propertyId === propertyId &&
+      newCheckIn < b.checkOut &&
+      newCheckOut > b.checkIn
+  );
+
+  res.json({ overlap: hasOverlap });
+});
+
+const PORT = 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
