@@ -4841,35 +4841,7 @@ app.post('/payment_success/:reservationid', async (req, res) => {
   }
 });
 
-// GET unique category names
-
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
-
 // add for checking date overlapping
-const express = require("express");
-const app = express();
-const cors = require("cors");
-
-app.use(cors());
-app.use(express.json());
-
-// Example: Pretend database of existing bookings
-const existingBookings = [
-  {
-    propertyId: 1,
-    checkIn: new Date("2025-11-05"),
-    checkOut: new Date("2025-11-10"),
-  },
-  {
-    propertyId: 1,
-    checkIn: new Date("2025-11-15"),
-    checkOut: new Date("2025-11-18"),
-  },
-];
-
 // API endpoint to check overlap
 app.post('/check-date-overlap/:propertyId', async (req, res) => {
   const propertyId = req.params.propertyId;
@@ -4905,4 +4877,11 @@ app.post('/check-date-overlap/:propertyId', async (req, res) => {
   } finally {
     if (client) client.release();
   }
+});
+
+// GET unique category names
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
 });
