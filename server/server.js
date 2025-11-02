@@ -4871,26 +4871,38 @@ const existingBookings = [
 ];
 
 // API endpoint to check overlap
-app.post("/api/check-date-overlap", (req, res) => {
-  const { propertyId, checkIn, checkOut } = req.body;
+app.post('/check-date-overlap/:propertyId', async (req, res) => {
+  const propertyId = req.params.propertyId;
+  const { checkIn, checkOut } = req.body;
+  let client;
 
+  // Validate inputs
   if (!propertyId || !checkIn || !checkOut) {
-    return res.status(400).json({ error: "Missing required fields" });
+    return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  const newCheckIn = new Date(checkIn);
-  const newCheckOut = new Date(checkOut);
+  try {
+    client = await pool.connect();
 
-  // Check overlap with existing bookings for that property
-  const hasOverlap = existingBookings.some(
-    (b) =>
-      b.propertyId === propertyId &&
-      newCheckIn < b.checkOut &&
-      newCheckOut > b.checkIn
-  );
+    // Query: check overlap for the given property ID
+    const query = `
+      SELECT r.reservationid
+      FROM reservation r
+      INNER JOIN property p ON r.propertyid = p.propertyid
+      WHERE p.propertyid = $1
+        AND ($2 < r.checkoutdatetime AND $3 > r.checkindatetime)
+        AND r.reservationstatus != 'cancelled'  -- ignore cancelled bookings
+    `;
 
-  res.json({ overlap: hasOverlap });
+    const result = await client.query(query, [propertyId, checkIn, checkOut]);
+
+    const hasOverlap = result.rows.length > 0;
+
+    return res.status(200).json({ overlap: hasOverlap });
+  } catch (error) {
+    console.error('Error checking date overlap:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  } finally {
+    if (client) client.release();
+  }
 });
-
-const PORT = 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
