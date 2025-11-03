@@ -4860,10 +4860,11 @@ app.post('/check-date-overlap/:propertyId', async (req, res) => {
     const query = `
       SELECT r.reservationid
       FROM reservation r
-      INNER JOIN property p ON r.propertyid = p.propertyid
+      INNER JOIN properties p ON r.propertyid = p.propertyid 
       WHERE p.propertyid = $1
-        AND ($2 < r.checkoutdatetime AND $3 > r.checkindatetime)
-        AND r.reservationstatus != 'cancelled'  -- ignore cancelled bookings
+        AND r.checkindatetime = $2
+        AND r.reservationstatus NOT IN ('cancelled', 'canceled')
+      LIMIT 1
     `;
 
     const result = await client.query(query, [propertyId, checkIn, checkOut]);
