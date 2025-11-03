@@ -4845,11 +4845,11 @@ app.post('/payment_success/:reservationid', async (req, res) => {
 // API endpoint to check overlap
 app.post('/check-date-overlap/:propertyId', async (req, res) => {
   const propertyId = req.params.propertyId;
-  const { checkIn, checkOut } = req.body;
+  const { checkIn } = req.body;
   let client;
 
   // Validate inputs
-  if (!propertyId || !checkIn || !checkOut) {
+  if (!propertyId || !checkIn ) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
@@ -4867,7 +4867,7 @@ app.post('/check-date-overlap/:propertyId', async (req, res) => {
       LIMIT 1
     `;
 
-    const result = await client.query(query, [propertyId, checkIn, checkOut]);
+    const result = await client.query(query, [propertyId, checkIn]);
 
     const hasOverlap = result.rows.length > 0;
 
