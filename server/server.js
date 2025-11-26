@@ -104,7 +104,7 @@ const upload = multer({
 process.on('SIGINT', async () => {
   if (pool) {
     try {
-      await pool.close();
+      await pool.end();
       console.log('Database connection pool closed');
     } catch (err) {
       console.error('Error closing the connection pool:', err);
