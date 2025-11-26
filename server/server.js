@@ -10,13 +10,12 @@ const path = require('path');
 const { Pool } = require('pg');
 const sharp = require('sharp');
 require("dotenv").config({ path: path.resolve(__dirname, '.env') });
-console.log("Current DATABASE_URL:", process.env.DATABASE_URL);
 const bcrypt = require('bcryptjs');
 const saltRounds = 10;
 
 // const connectionString = process.env.DATABASE_URL ;
 const crypto = require('crypto');
-const port = 8080;
+const port = 5432;
 
 // Add encryption and decryption keys and functions
 const encryptionKey = Buffer.from('12345678901234567890123456789012', 'utf8'); // 256-bit key
@@ -38,16 +37,14 @@ const decrypt = (encryptedText) => {
   return decrypted;
 };
 
+const connectionString = process.env.DATABASE_URL ;
+
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT) || 25060,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  connectionString,
   ssl: {
-    rejectUnauthorized: false   // OK for uni project; encrypts but skips strict check
+    rejectUnauthorized: false
   }
-});
+})
 
 const app = express();
 
@@ -104,7 +101,7 @@ const upload = multer({
 process.on('SIGINT', async () => {
   if (pool) {
     try {
-      await pool.end();
+      await pool.close();
       console.log('Database connection pool closed');
     } catch (err) {
       console.error('Error closing the connection pool:', err);
