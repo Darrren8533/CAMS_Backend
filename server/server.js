@@ -4880,6 +4880,399 @@ app.post('/check-date-overlap/:propertyId', async (req, res) => {
   }
 });
 
+// PayPal Integration Endpoints (Sandbox)
+// Install required: npm install @paypal/checkout-server-sdk
+
+// Create PayPal Order
+app.post('/paypal/create-order', async (req, res) => {
+  const { reservationId, propertyId, amount, currency, userid } = req.body;
+  let client;
+
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+
+  // Validate required fields
+  if (!reservationId || !propertyId || !amount || !currency || !userid) {
+    return res.status(400).json({ 
+      message: 'Missing required fields: reservationId, propertyId, amount, currency, userid',
+      success: false 
+    });
+  }
+
+  try {
+    client = await pool.connect();
+
+    // Verify reservation exists and belongs to user
+    const reservationCheck = await client.query(
+      `SELECT reservationid, totalprice, reservationstatus 
+       FROM reservation 
+       WHERE reservationid = $1 AND userid = $2`,
+      [reservationId, userid]
+    );
+
+    if (reservationCheck.rows.length === 0) {
+      return res.status(404).json({ 
+        message: 'Reservation not found or does not belong to user',
+        success: false 
+      });
+    }
+
+    const reservation = reservationCheck.rows[0];
+
+    // Verify reservation is in a payable state
+    if (reservation.reservationstatus !== 'Pending' && reservation.reservationstatus !== 'Accepted') {
+      return res.status(400).json({ 
+        message: `Reservation status '${reservation.reservationstatus}' is not payable`,
+        success: false 
+      });
+    }
+
+    // Get property owner's PayPal email
+    const propertyOwnerResult = await client.query(
+      `SELECT u.paypalid, u.ufirstname, u.ulastname, u.usergroup, u.username
+       FROM properties p
+       JOIN users u ON p.userid = u.userid
+       WHERE p.propertyid = $1`,
+      [propertyId]
+    );
+
+    if (propertyOwnerResult.rows.length === 0) {
+      return res.status(404).json({ 
+        message: 'Property not found',
+        success: false 
+      });
+    }
+
+    const owner = propertyOwnerResult.rows[0];
+
+    // Check if owner has PayPal configured
+    if (!owner.paypalid) {
+      return res.status(400).json({ 
+        message: 'Property owner has not configured PayPal email',
+        success: false 
+      });
+    }
+
+    // Initialize PayPal SDK (Sandbox)
+    const paypal = require('@paypal/checkout-server-sdk');
+    
+    // Configure PayPal Sandbox environment
+    const environment = new paypal.core.SandboxEnvironment(
+      process.env.PAYPAL_CLIENT_ID || 'YOUR_SANDBOX_CLIENT_ID',
+      process.env.PAYPAL_CLIENT_SECRET || 'YOUR_SANDBOX_CLIENT_SECRET'
+    );
+    const paypalClient = new paypal.core.PayPalHttpClient(environment);
+
+    // Create order request
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer("return=representation");
+    request.requestBody({
+      intent: 'CAPTURE',
+      purchase_units: [{
+        amount: {
+          currency_code: currency,
+          value: amount.toString()
+        },
+        description: `Reservation ${reservationId} for Property ${propertyId}`,
+        payee: {
+          email_address: owner.paypalid
+        },
+        reference_id: `RESERVATION-${reservationId}`
+      }],
+      application_context: {
+        brand_name: 'CAMS',
+        landing_page: 'BILLING',
+        user_action: 'PAY_NOW',
+        return_url: 'https://cams-fronted.vercel.app/payment-success',
+        cancel_url: 'https://cams-fronted.vercel.app/payment-cancel'
+      }
+    });
+
+    // Execute PayPal order creation
+    const order = await paypalClient.execute(request);
+    
+    if (order.statusCode !== 201) {
+      return res.status(500).json({ 
+        message: 'Failed to create PayPal order',
+        success: false,
+        error: order.result 
+      });
+    }
+
+    // Extract approval URL from order links
+    const approvalLink = order.result.links.find(link => link.rel === 'approve');
+    const approvalUrl = approvalLink ? approvalLink.href : null;
+
+    if (!approvalUrl) {
+      return res.status(500).json({ 
+        message: 'Failed to get PayPal approval URL',
+        success: false 
+      });
+    }
+
+    // Get username for audit trail
+    const userResult = await client.query(
+      'SELECT username FROM users WHERE userid = $1',
+      [userid]
+    );
+    const username = userResult.rows.length > 0 ? userResult.rows[0].username : userid;
+
+    // Log PayPal order creation in audit trail
+    await client.query(
+      `INSERT INTO audit_trail (
+        entityid, timestamp, entitytype, actiontype, action, userid, username
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        reservationId,
+        timestamp,
+        'Reservation',
+        'POST',
+        'Create PayPal Order',
+        userid,
+        username
+      ]
+    );
+
+    // Return order data in format expected by Flutter app
+    res.status(200).json({
+      success: true,
+      orderId: order.result.id,
+      approvalUrl: approvalUrl,
+      // Alternative formats for compatibility
+      id: order.result.id,
+      approval_url: approvalUrl,
+      links: order.result.links
+    });
+
+  } catch (err) {
+    console.error('Error creating PayPal order:', err);
+    res.status(500).json({ 
+      message: 'Failed to create PayPal order',
+      success: false,
+      error: err.message 
+    });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
+// Capture PayPal Order
+app.post('/paypal/capture-order', async (req, res) => {
+  const { orderId, reservationId, userid } = req.body;
+  let client;
+
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+
+  // Validate required fields
+  if (!orderId || !reservationId || !userid) {
+    return res.status(400).json({ 
+      message: 'Missing required fields: orderId, reservationId, userid',
+      success: false 
+    });
+  }
+
+  try {
+    client = await pool.connect();
+
+    // Verify reservation exists and belongs to user
+    const reservationCheck = await client.query(
+      `SELECT reservationid, reservationstatus, totalprice, propertyid
+       FROM reservation 
+       WHERE reservationid = $1 AND userid = $2`,
+      [reservationId, userid]
+    );
+
+    if (reservationCheck.rows.length === 0) {
+      return res.status(404).json({ 
+        message: 'Reservation not found or does not belong to user',
+        success: false 
+      });
+    }
+
+    const reservation = reservationCheck.rows[0];
+
+    // Initialize PayPal SDK (Sandbox)
+    const paypal = require('@paypal/checkout-server-sdk');
+    
+    // Configure PayPal Sandbox environment
+    const environment = new paypal.core.SandboxEnvironment(
+      process.env.PAYPAL_CLIENT_ID || 'YOUR_SANDBOX_CLIENT_ID',
+      process.env.PAYPAL_CLIENT_SECRET || 'YOUR_SANDBOX_CLIENT_SECRET'
+    );
+    const paypalClient = new paypal.core.PayPalHttpClient(environment);
+
+    // Capture order request
+    const request = new paypal.orders.OrdersCaptureRequest(orderId);
+    request.requestBody({});
+    
+    // Execute PayPal capture
+    const capture = await paypalClient.execute(request);
+    
+    if (capture.statusCode !== 201) {
+      return res.status(500).json({ 
+        message: 'Failed to capture PayPal order',
+        success: false,
+        error: capture.result 
+      });
+    }
+
+    const captureStatus = capture.result.status;
+    const captureId = capture.result.id;
+
+    // Update reservation status to 'Paid' if capture is successful
+    if (captureStatus === 'COMPLETED') {
+      await client.query(
+        `UPDATE reservation 
+         SET reservationstatus = 'Paid' 
+         WHERE reservationid = $1`,
+        [reservationId]
+      );
+
+      // Get username for logging
+      const userResult = await client.query(
+        'SELECT username FROM users WHERE userid = $1',
+        [userid]
+      );
+      const username = userResult.rows.length > 0 ? userResult.rows[0].username : userid;
+
+      // Log payment in book_and_pay_log
+      await client.query(
+        `INSERT INTO book_and_pay_log (logtime, log, userid)
+         VALUES ($1, $2, $3)`,
+        [
+          timestamp,
+          `${username} completed PayPal payment (Order: ${captureId}) for reservation #${reservationId}`,
+          userid
+        ]
+      );
+
+      // Audit trail
+      await client.query(
+        `INSERT INTO audit_trail (
+          entityid, timestamp, entitytype, actiontype, action, userid, username
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          reservationId,
+          timestamp,
+          'Reservation',
+          'POST',
+          'PayPal Payment Completed',
+          userid,
+          username
+        ]
+      );
+
+      // Send payment success notification email
+      try {
+        const paymentSuccessResult = await client.query(
+          `SELECT 
+            rc.rclastname, 
+            rc.rcemail, 
+            rc.rctitle, 
+            r.checkindatetime, 
+            r.checkoutdatetime, 
+            r.reservationblocktime, 
+            p.propertyaddress,
+            u.ulastname,
+            u.uemail,
+            u.utitle
+          FROM reservation_customer_details rc 
+          JOIN reservation r ON rc.rcid = r.rcid 
+          JOIN properties p ON r.propertyid = p.propertyid 
+          JOIN users u ON p.userid = u.userid
+          WHERE r.reservationid = $1`,
+          [reservationId]
+        );
+
+        if (paymentSuccessResult.rows.length > 0) {
+          const data = paymentSuccessResult.rows[0];
+          const {
+            rclastname: customerLastName,
+            rcemail: customerEmail,
+            rctitle: customerTitle,
+            checkindatetime: reservationCheckInDate,
+            checkoutdatetime: reservationCheckOutDate,
+            propertyaddress: reservationProperty,
+            ulastname: operatorLastName,
+            uemail: operatorEmail,
+            utitle: operatorTitle,
+          } = data;
+
+          const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS,
+            },
+          });
+
+          const customerMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: customerEmail,
+            subject: 'Your Payment Was Successful',
+            html: `
+              <h1><b>Dear ${customerTitle} ${customerLastName},</b></h1><hr/>
+              <p>Thank you for your payment!</p>
+              <p>Your booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: blue">confirmed</span>.</p>
+              <p>We look forward to your stay.</p>
+              <br/>
+              <p>You may log in to your account to view the reservation details.</p>
+              <div style="margin: 10px 0;">
+                <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px;">Login</a>
+              </div>
+            `,
+          };
+
+          const operatorMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: operatorEmail,
+            subject: 'Customer Payment Received',
+            html: `
+              <h1><b>Dear ${operatorTitle} ${operatorLastName},</b></h1><hr/>
+              <p>The booking for <b>${reservationProperty}</b> from <b>${reservationCheckInDate}</b> to <b>${reservationCheckOutDate}</b> has been <span style="color: blue">paid</span> by the customer.</p> 
+              <p>Please prepare the room for the customer's check-in.</p>
+              <br/>
+              <p>Click the button below if you wish to view the reservation details.</p>
+              <div style="margin: 10px 0;">
+                <a href="https://cams-fronted.vercel.app/login" style="background-color: black; color: white; padding: 10px 20px; font-weight: bold; text-decoration: none; border-radius: 5px;">Login</a>
+              </div>
+            `,
+          };
+
+          await transporter.sendMail(customerMailOptions);
+          await transporter.sendMail(operatorMailOptions);
+        }
+      } catch (emailError) {
+        console.error('Error sending payment success emails:', emailError);
+        // Don't fail the capture if email fails
+      }
+    }
+
+    // Return capture result
+    res.status(200).json({
+      success: true,
+      status: captureStatus,
+      orderId: captureId,
+      reservationId: reservationId,
+      message: captureStatus === 'COMPLETED' ? 'Payment captured successfully' : `Payment status: ${captureStatus}`,
+      details: capture.result
+    });
+
+  } catch (err) {
+    console.error('Error capturing PayPal order:', err);
+    res.status(500).json({ 
+      message: 'Failed to capture PayPal order',
+      success: false,
+      error: err.message 
+    });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
 // GET unique category names
 
 // Start the server
