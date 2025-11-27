@@ -4880,8 +4880,63 @@ app.post('/check-date-overlap/:propertyId', async (req, res) => {
   }
 });
 
-// PayPal Integration Endpoints (Sandbox)
-// Install required: npm install @paypal/checkout-server-sdk
+// PayPal Integration Endpoints (Sandbox) - Using Direct HTTP Calls
+// No SDK required - uses native Node.js https module
+
+// Helper function to get PayPal access token
+async function getPayPalAccessToken() {
+  const https = require('https');
+  const querystring = require('querystring');
+  
+  const clientId = process.env.PAYPAL_CLIENT_ID || 'YOUR_SANDBOX_CLIENT_ID';
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET || 'YOUR_SANDBOX_CLIENT_SECRET';
+  
+  // PayPal Sandbox OAuth URL
+  const authUrl = 'https://api.sandbox.paypal.com/v1/oauth2/token';
+  
+  return new Promise((resolve, reject) => {
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    
+    const postData = querystring.stringify({
+      grant_type: 'client_credentials'
+    });
+    
+    const options = {
+      hostname: 'api.sandbox.paypal.com',
+      path: '/v1/oauth2/token',
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': postData.length
+      }
+    };
+    
+    const req = https.request(options, (res) => {
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          const tokenData = JSON.parse(data);
+          resolve(tokenData.access_token);
+        } else {
+          reject(new Error(`PayPal OAuth failed: ${res.statusCode} - ${data}`));
+        }
+      });
+    });
+    
+    req.on('error', (error) => {
+      reject(error);
+    });
+    
+    req.write(postData);
+    req.end();
+  });
+}
 
 // Create PayPal Order
 app.post('/paypal/create-order', async (req, res) => {
@@ -4952,20 +5007,13 @@ app.post('/paypal/create-order', async (req, res) => {
       });
     }
 
-    // Initialize PayPal SDK (Sandbox)
-    const paypal = require('@paypal/checkout-server-sdk');
-    
-    // Configure PayPal Sandbox environment
-    const environment = new paypal.core.SandboxEnvironment(
-      process.env.PAYPAL_CLIENT_ID || 'YOUR_SANDBOX_CLIENT_ID',
-      process.env.PAYPAL_CLIENT_SECRET || 'YOUR_SANDBOX_CLIENT_SECRET'
-    );
-    const paypalClient = new paypal.core.PayPalHttpClient(environment);
+    // Get PayPal access token
+    const accessToken = await getPayPalAccessToken();
 
-    // Create order request
-    const request = new paypal.orders.OrdersCreateRequest();
-    request.prefer("return=representation");
-    request.requestBody({
+    // Create PayPal order using direct HTTP call
+    const https = require('https');
+    
+    const orderData = JSON.stringify({
       intent: 'CAPTURE',
       purchase_units: [{
         amount: {
@@ -4987,19 +5035,44 @@ app.post('/paypal/create-order', async (req, res) => {
       }
     });
 
-    // Execute PayPal order creation
-    const order = await paypalClient.execute(request);
-    
-    if (order.statusCode !== 201) {
-      return res.status(500).json({ 
-        message: 'Failed to create PayPal order',
-        success: false,
-        error: order.result 
+    const orderResult = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'api.sandbox.paypal.com',
+        path: '/v2/checkout/orders',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Length': orderData.length
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode === 201) {
+            resolve(JSON.parse(data));
+          } else {
+            reject(new Error(`PayPal order creation failed: ${res.statusCode} - ${data}`));
+          }
+        });
       });
-    }
+
+      req.on('error', (error) => {
+        reject(error);
+      });
+
+      req.write(orderData);
+      req.end();
+    });
 
     // Extract approval URL from order links
-    const approvalLink = order.result.links.find(link => link.rel === 'approve');
+    const approvalLink = orderResult.links.find(link => link.rel === 'approve');
     const approvalUrl = approvalLink ? approvalLink.href : null;
 
     if (!approvalUrl) {
@@ -5035,12 +5108,12 @@ app.post('/paypal/create-order', async (req, res) => {
     // Return order data in format expected by Flutter app
     res.status(200).json({
       success: true,
-      orderId: order.result.id,
+      orderId: orderResult.id,
       approvalUrl: approvalUrl,
       // Alternative formats for compatibility
-      id: order.result.id,
+      id: orderResult.id,
       approval_url: approvalUrl,
-      links: order.result.links
+      links: orderResult.links
     });
 
   } catch (err) {
@@ -5092,33 +5165,49 @@ app.post('/paypal/capture-order', async (req, res) => {
 
     const reservation = reservationCheck.rows[0];
 
-    // Initialize PayPal SDK (Sandbox)
-    const paypal = require('@paypal/checkout-server-sdk');
-    
-    // Configure PayPal Sandbox environment
-    const environment = new paypal.core.SandboxEnvironment(
-      process.env.PAYPAL_CLIENT_ID || 'YOUR_SANDBOX_CLIENT_ID',
-      process.env.PAYPAL_CLIENT_SECRET || 'YOUR_SANDBOX_CLIENT_SECRET'
-    );
-    const paypalClient = new paypal.core.PayPalHttpClient(environment);
+    // Get PayPal access token
+    const accessToken = await getPayPalAccessToken();
 
-    // Capture order request
-    const request = new paypal.orders.OrdersCaptureRequest(orderId);
-    request.requestBody({});
+    // Capture PayPal order using direct HTTP call
+    const https = require('https');
     
-    // Execute PayPal capture
-    const capture = await paypalClient.execute(request);
-    
-    if (capture.statusCode !== 201) {
-      return res.status(500).json({ 
-        message: 'Failed to capture PayPal order',
-        success: false,
-        error: capture.result 
+    const captureResult = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'api.sandbox.paypal.com',
+        path: `/v2/checkout/orders/${orderId}/capture`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Length': 0
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode === 201) {
+            resolve(JSON.parse(data));
+          } else {
+            reject(new Error(`PayPal capture failed: ${res.statusCode} - ${data}`));
+          }
+        });
       });
-    }
 
-    const captureStatus = capture.result.status;
-    const captureId = capture.result.id;
+      req.on('error', (error) => {
+        reject(error);
+      });
+
+      req.end();
+    });
+
+    const captureStatus = captureResult.status;
+    const captureId = captureResult.id;
 
     // Update reservation status to 'Paid' if capture is successful
     if (captureStatus === 'COMPLETED') {
@@ -5256,7 +5345,7 @@ app.post('/paypal/capture-order', async (req, res) => {
       orderId: captureId,
       reservationId: reservationId,
       message: captureStatus === 'COMPLETED' ? 'Payment captured successfully' : `Payment status: ${captureStatus}`,
-      details: capture.result
+      details: captureResult
     });
 
   } catch (err) {
